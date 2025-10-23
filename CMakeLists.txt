@@ -5,14 +5,14 @@ project(VAGC)
 set(_libagc_src agc_engine_init.c agc_engine.c agc_utilities.c rfopen.c
 Backtrace.c SocketAPI.c DecodeDigitalDownlink.c)
 
-set(_agc_src main.c agc_cli.c agc_simulator.c agc_debugger.c
-agc_gdbmi.c agc_disassembler.c agc_help.c nbfgets.c agc_symtab.c
+set(_agc_src main.c agc_cli.c agc_simulator.c
+  agc_disassembler.c agc_help.c nbfgets.c agc_symtab.c
 NormalizeSourceName.c checkdec.c Backtrace.c)
 
 add_library(libyaAGC ${_libagc_src})
 
 add_executable(yaAGC ${_agc_src})
-target_compile_definitions(yaAGC PRIVATE NVER="${NVER}" NOREADLINE="yes" GDBMI)
+target_compile_definitions(yaAGC PRIVATE NVER="${NVER}" NOREADLINE="yes")
 target_link_libraries(yaAGC PRIVATE libyaAGC m)
 
 add_library(regex regex.c)

@@ -39,7 +39,7 @@
 #include "agc_engine.h"
 #include "agc_symtab.h"
 #include "agc_disassembler.h"
-#include "agc_debugger.h"
+
 
 /*
  * Displays the current address and its contents.
@@ -279,9 +279,6 @@ void DasPrintInstructionAtAddr(unsigned short LinearAddress)
 {
 	int Value;
 	int ExtraCode = 0;
-
-	Value = DbgGetValueByAddress(LinearAddress);
-	if ((DbgGetValueByAddress(LinearAddress-1)) == 6) ExtraCode = 1;
 
 	DasPrintInstruction(ExtraCode,Value);
 }

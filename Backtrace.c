@@ -61,7 +61,7 @@
 #include <string.h>
 #include "agc_engine.h"
 #include "agc_symtab.h"
-#include "agc_debugger.h"
+
 
 
 #ifdef GDBMI
