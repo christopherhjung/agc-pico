@@ -580,7 +580,6 @@ void WriteIO (agc_t * State, int Address, int Value);
 void CpuWriteIO (agc_t * State, int Address, int Value);
 void UnblockSocket (int SocketNum);
 FILE *rfopen (const char *Filename, const char *mode);
-void BacktraceAdd (agc_t *State, int Cause);
 int BacktraceRestore (agc_t *State, int n);
 void BacktraceDisplay (agc_t *State,int Num);
 int16_t OverflowCorrected (int Value);

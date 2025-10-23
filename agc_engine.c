@@ -2524,7 +2524,6 @@ agc_engine (agc_t * State)
 
       if (InterruptRequested)
         {
-          BacktraceAdd (State, i);
           // Set up the return stuff.
           c (RegZRUPT)= ProgramCounter + 1;
           c (RegBRUPT)= Instruction;
@@ -2624,7 +2623,6 @@ agc_engine (agc_t * State)
 	}
       else
 	{
-	  BacktraceAdd (State, 0);
 	  if (ValueK != RegQ)	// If not a RETURN instruction ...
 	    c (RegQ)= 0177777 & State->NextZ;
 	  State->NextZ = Address12;
@@ -2678,7 +2676,6 @@ agc_engine (agc_t * State)
       case 015:
       case 016:
       case 017:
-      BacktraceAdd (State, 0);
       // TCF instruction (1 MCT).
       State->NextZ = Address12;
       // THAT was easy ... too easy ...
@@ -2872,10 +2869,6 @@ agc_engine (agc_t * State)
       if (Address12 == 017 << 1)
 	{
 	  Resume:
-	  if (State->InIsr)
-	  BacktraceAdd (State, 255);
-	  else
-	  BacktraceAdd (State, 0);
 	  State->NextZ = c (RegZRUPT) - 1;
 	  State->InIsr = 0;
 	  State->SubstituteInstruction = 1;
@@ -3213,7 +3206,6 @@ agc_engine (agc_t * State)
       //if (Operand16 == AGC_P0 || Operand16 == AGC_M0)
       if (Accumulator == 0 || Accumulator == 0177777)
 	{
-	  BacktraceAdd (State, 0);
 	  State->NextZ = Address12;
           JustTookBZF = 1;
 	}
@@ -3412,7 +3404,6 @@ agc_engine (agc_t * State)
       //if (Operand16 == AGC_P0 || IsNegativeSP (Operand16))
       if (Accumulator == 0 || 0 != (Accumulator & 0100000))
 	{
-	  BacktraceAdd (State, 0);
 	  State->NextZ = Address12;
           JustTookBZMF = 1;
 	}
