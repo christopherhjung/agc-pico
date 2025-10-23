@@ -5,7 +5,7 @@ project(VAGC)
 set(_libagc_src agc_engine_init.c agc_engine.c agc_utilities.c rfopen.c
 SocketAPI.c DecodeDigitalDownlink.c)
 
-set(_agc_src main.c agc_cli.c agc_simulator.c agc_help.c nbfgets.c agc_symtab.c
+set(_agc_src main.c agc_cli.c agc_simulator.c agc_help.c nbfgets.c
 NormalizeSourceName.c checkdec.c)
 
 add_library(libyaAGC ${_libagc_src})

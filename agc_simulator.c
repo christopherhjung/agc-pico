@@ -47,8 +47,6 @@
 #include "yaAGC.h"
 #include "agc_cli.h"
 #include "agc_engine.h"
-#include "agc_symtab.h"
-#include "agc_debug.h"
 
 #include "agc_simulator.h"
 
@@ -127,10 +125,6 @@ current engine state. */
 static void SimExecuteEngine()
 {
 	agc_engine (&Simulator.State);
-
-
-  agc_t* state = &Simulator.State;
-
 }
 
 
