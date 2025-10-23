@@ -215,27 +215,6 @@ static void SimSleep(void)
 #endif
 }
 
-/**
-This function manages the AGC periodic core dumping of the
-AGC state machine.
-*/
-static void SimManageCoreDump(void)
-{
-	/* Check to see if the next core dump should be made */
-	if (Simulator.RealTime >= Simulator.NextCoreDump)
-	{
-		/* Use either specific core dump name (from cfg) or generic */
-		if (Simulator.Options->cfg)
-		{
-			if (CmOrLm) MakeCoreDump (&Simulator.State, "CM.core");
-			else MakeCoreDump (&Simulator.State, "LM.core");
-		}
-		else MakeCoreDump (&Simulator.State, "core");
-
-		/* Set the next CoreDump Time based on DumpInterval time */
-		Simulator.NextCoreDump = Simulator.RealTime + Simulator.DumpInterval;
-	}
-}
 
 /**
  * This function is a helper to allow the debugger to update the realtime
@@ -256,9 +235,6 @@ static void SimManageTime(void)
 	Simulator.RealTime = times (&Simulator.DummyTime);
 	if (Simulator.RealTime != Simulator.LastRealTime)
 	{
-		/* Make a routine core dump */
-		SimManageCoreDump();
-
 		// Need to recalculate the number of AGC cycles we're supposed to
 		// have executed.  Notice the trick of multiplying both CycleCount
 		// and DesiredCycles by CLK_TCK, to avoid a long long division by CLK_TCK.

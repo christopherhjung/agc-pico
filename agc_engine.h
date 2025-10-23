@@ -580,7 +580,6 @@ int agc_load_binfile(agc_t *Stage, const char *RomImage);
 int ReadIO (agc_t * State, int Address);
 void WriteIO (agc_t * State, int Address, int Value);
 void CpuWriteIO (agc_t * State, int Address, int Value);
-void MakeCoreDump (agc_t * State, const char *CoreDump);
 void UnblockSocket (int SocketNum);
 FILE *rfopen (const char *Filename, const char *mode);
 void BacktraceAdd (agc_t *State, int Cause);
