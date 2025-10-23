@@ -125,7 +125,6 @@ int ParseIoPacketAGS (unsigned char *Packet, int *Type, int *Data);
 
 #ifndef WASI
 int InitializeSocketSystem (void);
-void UnblockSocket (int SocketNum);
 int EstablishSocket (unsigned short portnum, int MaxClients);
 int CallSocket (char *hostname, unsigned short portnum);
 #endif

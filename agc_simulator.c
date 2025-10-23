@@ -145,7 +145,6 @@ int SimInitialize(Options_t* Options)
 	Simulator.DumpInterval = Options->dump_time * sysconf (_SC_CLK_TCK);
 
 	/* Set legacy Option variables */
-	Portnum = Options->port;
 	DebugDsky = Options->debug_dsky;
 	DebugDeda = Options->debug_deda;
 	DedaQuiet = Options->deda_quiet;

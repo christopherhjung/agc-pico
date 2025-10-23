@@ -559,12 +559,6 @@ extern int LastRhcPitch, LastRhcYaw, LastRhcRoll;
 extern Swrite_t *SwritePtr;
 #endif
 
-#ifdef SOCKET_API_C
-int Portnum = 19697;
-#else
-extern int Portnum;
-#endif
-
 
 //---------------------------------------------------------------------------
 // Function prototypes.
@@ -578,7 +572,6 @@ int agc_load_binfile(agc_t *Stage, const char *RomImage);
 int ReadIO (agc_t * State, int Address);
 void WriteIO (agc_t * State, int Address, int Value);
 void CpuWriteIO (agc_t * State, int Address, int Value);
-void UnblockSocket (int SocketNum);
 FILE *rfopen (const char *Filename, const char *mode);
 int BacktraceRestore (agc_t *State, int n);
 void BacktraceDisplay (agc_t *State,int Num);
@@ -598,8 +591,9 @@ double GetSP (int *Ptr, int Scale);
 double GetUSP (int *Ptr, int Scale);
 
 // API for yaAGC-to-peripheral communications.
-void ChannelOutput (agc_t * State, int Channel, int Value);
-int ChannelInput (agc_t * State);
+void agc_channel_output (agc_t * State, int channel, int value);
+int agc_channel_input (agc_t * State);
+int dsky_channel_input (int* channel, int* value);
 void ChannelRoutine (agc_t *State);
 void ChannelRoutineGeneric (void *State, void (*UpdatePeripherals) (void *, Client_t *));
 void ShiftToDeda (agc_t *State, int Data);

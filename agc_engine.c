@@ -656,7 +656,7 @@ CpuWriteIO (agc_t * State, int Address, int Value)
     }
 
   WriteIO (State, Address, Value);
-  ChannelOutput (State, Address, Value & 077777);
+  agc_channel_output (State, Address, Value & 077777);
 
   // 2005-06-25 RSB.  DOWNRUPT stuff.  I assume that the 20 ms. between
   // downlink transmissions is due to the time needed for transmitting,
@@ -1284,7 +1284,7 @@ CounterDINC (agc_t *State, int CounterNum, int16_t * Counter)
     {
       // Emit a ZOUT.
       if (CounterNum != 0)
-	ChannelOutput (State, 0x80 | CounterNum, 017);
+	agc_channel_output (State, 0x80 | CounterNum, 017);
 
       RetVal = 1;
     }
@@ -1294,7 +1294,7 @@ CounterDINC (agc_t *State, int CounterNum, int16_t * Counter)
 
       // Emit a MOUT.
       if (CounterNum != 0)
-	ChannelOutput (State, 0x80 | CounterNum, 016);
+	agc_channel_output (State, 0x80 | CounterNum, 016);
     }
   else					// Positive?
     {
@@ -1302,7 +1302,7 @@ CounterDINC (agc_t *State, int CounterNum, int16_t * Counter)
 
       // Emit a POUT.
       if (CounterNum != 0)
-	ChannelOutput (State, 0x80 | CounterNum, 015);
+	agc_channel_output (State, 0x80 | CounterNum, 015);
     }
 
   *Counter = i;
@@ -1671,7 +1671,7 @@ BurstOutput (agc_t *State, int DriveBitMask, int CounterRegister, int Channel)
   // If the count is non-zero, pulse it.
   if (Delta > 0)
     {
-      ChannelOutput (State, Channel, Direction | Delta);
+      agc_channel_output (State, Channel, Direction | Delta);
       DriveCountSaved -= Delta;
     }
   if (Direction)
@@ -1744,7 +1744,7 @@ UpdateDSKY(agc_t *State)
 
   // Send out updated display information, if something on the DSKY changed
   if (State->DskyChannel163 != LastChannel163)
-    ChannelOutput(State, 0163, State->DskyChannel163);
+    agc_channel_output(State, 0163, State->DskyChannel163);
 }
 
 //----------------------------------------------------------------------------
@@ -1948,7 +1948,7 @@ agc_engine (agc_t * State)
 
   // Get data from input channels.  Return immediately if a unprogrammed 
   // counter-increment was performed.
-  if (ChannelInput (State))
+  if (agc_channel_input (State))
     return (0);
 
   // If in --debug-dsky mode, don't want to take the chance of executing
@@ -2042,7 +2042,7 @@ agc_engine (agc_t * State)
 
                   // Turn on the STBY light, and switch off the EL segments
                   State->DskyChannel163 |= DSKY_STBY | DSKY_EL_OFF;
-                  ChannelOutput(State, 0163, State->DskyChannel163);
+                  agc_channel_output(State, 0163, State->DskyChannel163);
                 }
               else if (!State->SbyStillPressed)
                 {
@@ -2051,7 +2051,7 @@ agc_engine (agc_t * State)
 
                   // Turn off the STBY light
                   State->DskyChannel163 &= ~(DSKY_STBY | DSKY_EL_OFF);
-                  ChannelOutput(State, 0163, State->DskyChannel163);
+                  agc_channel_output(State, 0163, State->DskyChannel163);
                 }
             }
         }
@@ -2300,7 +2300,7 @@ agc_engine (agc_t * State)
             }
 
           // Push the CH77 updates to the outside world
-          ChannelOutput (State, 077, State->InputChannel[077]);
+          agc_channel_output (State, 077, State->InputChannel[077]);
         }
 
 
@@ -2349,7 +2349,7 @@ agc_engine (agc_t * State)
       j = ((OldChannel14 & 0740) << 6) | GyroCount;
       OldChannel14 = i;
       GyroCount = 0;
-      ChannelOutput (State, 0177, j);
+      agc_channel_output (State, 0177, j);
     }
 #else // GYRO_TIMING_SIMULATED
 #define GYRO_BURST 800
@@ -2364,7 +2364,7 @@ agc_engine (agc_t * State)
 	    j = GyroCount;
 	    if (j > 03777)
 	      j = 03777;
-	    ChannelOutput (State, 0177, OldChannel14 | j);
+	    agc_channel_output (State, 0177, OldChannel14 | j);
 	    GyroCount -= j;
 	  }
 	// Set up new torque counter.
@@ -2383,7 +2383,7 @@ agc_engine (agc_t * State)
 	  j = GyroCount;
 	  if (j > GYRO_BURST2)
 	    j = GYRO_BURST2;
-	  ChannelOutput (State, 0177, OldChannel14 | j);
+	  agc_channel_output (State, 0177, OldChannel14 | j);
 	  GyroCount -= j;
 	}
     }
@@ -2431,12 +2431,12 @@ agc_engine (agc_t * State)
 
   if (State->Erasable[0][RegOPTX] && 0 != (State->InputChannel[014] & 02000))
     {
-      ChannelOutput (State, 0172, State->Erasable[0][RegOPTX]);
+      agc_channel_output (State, 0172, State->Erasable[0][RegOPTX]);
       State->Erasable[0][RegOPTX] = 0;
     }
   if (State->Erasable[0][RegOPTY] && 0 != (State->InputChannel[014] & 04000))
     {
-      ChannelOutput (State, 0171, State->Erasable[0][RegOPTY]);
+      agc_channel_output (State, 0171, State->Erasable[0][RegOPTY]);
       State->Erasable[0][RegOPTY] = 0;
     }
 

@@ -47,6 +47,12 @@
 #include "agc_engine.h"
 #include "ringbuffer.h"
 
+typedef struct
+{
+  uint16_t channel;
+  uint16_t value;
+} Packet;
+
 static int CurrentChannelValues[256] = { 0 };
 static int ChannelMasks[256] = { 077777 };
 
@@ -72,30 +78,33 @@ ChannelSetup (agc_t* State)
  * The bulk of the code was copied from SocketAPI.c
  */
 void
-ChannelOutput (agc_t* State, int Channel, int Value)
+agc_channel_output (agc_t* State, int channel, int value)
 {
   if (!ChannelIsSetUp)
     ChannelSetup (State);
 
   // Some output channels have purposes within the CPU, so we have to
   // account for those separately.
-  if (Channel == 7)
+  if (channel == 7)
     {
-      State->InputChannel[7] = State->OutputChannel7 = (Value & 0160);
+      State->InputChannel[7] = State->OutputChannel7 = (value & 0160);
       return;
     }
 
   // Stick data into the RHCCTR registers, if bits 8,9 of channel 013 are set.
-  if (Channel == 013 && 0600 == (0600 & Value) && !CmOrLm)
+  if (channel == 013 && 0600 == (0600 & value) && !CmOrLm)
     {
       State->Erasable[0][042] = LastRhcPitch;
       State->Erasable[0][043] = LastRhcYaw;
       State->Erasable[0][044] = LastRhcRoll;
     }
 
-  unsigned char Packet[4];
-  if (!FormIoPacket (Channel, Value, Packet))
-    ringbuffer_put (&ringbuffer_out, Packet);
+  Packet packet = {
+    .channel = channel,
+    .value = value
+  };
+
+  ringbuffer_put (&ringbuffer_out, (unsigned char*)&packet);
 }
 
 
@@ -104,55 +113,51 @@ ChannelOutput (agc_t* State, int Channel, int Value)
  * See also NullAPI.c
  */
 int
-ChannelInput (agc_t* State)
+agc_channel_input (agc_t* State)
 {
   if (!ChannelIsSetUp)
     ChannelSetup (State);
 
-  unsigned char Packet[4];
-  while (ringbuffer_get(&ringbuffer_in, Packet))
+  Packet packet;
+  while (ringbuffer_get(&ringbuffer_in, (unsigned char*)&packet))
     {
       // This body of the while loop follows the work done in SocketAPI.c.
       // I removed socket client related code, and refactored and reformatted
       // the code.
 
-      int uBit, Value, Channel;
-
-      if (ParseIoPacket (Packet, &Channel, &Value, &uBit))
-        continue; // Not a valid packet; try the next one.
-
-      Value &= 077777; // Convert to AGC format (only keep upper 15 bits).
+      int uBit = 0;
+      packet.value &= 077777; // Convert to AGC format (only keep upper 15 bits).
 
       if (uBit)
         {
           // This is not an actual input to the CPU. It only sets a bit mask
           // for masking of future inputs.
-          ChannelMasks[Channel] = Value;
+          ChannelMasks[packet.channel] = packet.value;
           continue; // Proceed with the next packet in the ring buffer.
         }
 
-      if (Channel & 0x80)
+      if (packet.channel & 0x80)
         {
           // This is a counter increment. According to NullAPI.c we need to
           // immediately return a value of 1.
-          UnprogrammedIncrement (State, Channel, Value);
+          UnprogrammedIncrement (State, packet.channel, packet.value);
           return 1;
         }
 
       // Mask out irrelevant bits, set current bits, and write to CPU.
-      Value &= ChannelMasks[Channel];
-      Value |= ReadIO (State, Channel) & ~ChannelMasks[Channel];
-      WriteIO (State, Channel, Value);
+      packet.value &= ChannelMasks[packet.channel];
+      packet.value |= ReadIO (State, packet.channel) & ~ChannelMasks[packet.channel];
+      WriteIO (State, packet.channel, packet.value);
 
       // If this is a keystroke from the DSKY, generate an interrupt req.
-      if (Channel == 015)
+      if (packet.channel == 015)
         State->InterruptRequests[5] = 1;
       // If this is on fictitious input channel 0173, then the data
       // should be placed in the INLINK counter register, and an
       // UPRUPT interrupt request should be set.
-      else if (Channel == 0173)
+      else if (packet.channel == 0173)
         {
-          State->Erasable[0][RegINLINK] = (Value & 077777);
+          State->Erasable[0][RegINLINK] = (packet.value & 077777);
           State->InterruptRequests[7] = 1;
         }
       // Fictitious registers for rotational hand controller (RHC).
@@ -160,25 +165,36 @@ ChannelInput (agc_t* State)
       // merely squirreled away for later.  They won't actually
       // go into the counter registers until the RHC counters are
       // enabled and the data requested (bits 8,9 of channel 13).
-      else if (Channel == 0166)
+      else if (packet.channel == 0166)
         {
-          LastRhcPitch = Value;
-          ChannelOutput (State, Channel, Value);  // echo
+          LastRhcPitch = packet.value;
+          agc_channel_output (State, packet.channel, packet.value);  // echo
         }
-      else if (Channel == 0167)
+      else if (packet.channel == 0167)
         {
-          LastRhcYaw = Value;
-          ChannelOutput (State, Channel, Value);  // echo
+          LastRhcYaw = packet.value;
+          agc_channel_output (State, packet.channel, packet.value);  // echo
         }
-      else if (Channel == 0170)
+      else if (packet.channel == 0170)
         {
-          LastRhcRoll = Value;
-          ChannelOutput (State, Channel, Value);  // echo
+          LastRhcRoll = packet.value;
+          agc_channel_output (State, packet.channel, packet.value);  // echo
         }
     } // while
 
   return 0;
 }
+
+int dsky_channel_input (int* channel, int* value)
+{
+  Packet packet;
+  if (!ringbuffer_get(&ringbuffer_out, (unsigned char*)&packet))
+    return 0;
+
+  *channel = packet.channel;
+  *value = packet.value;
+}
+
 
 void
 ChannelRoutine (agc_t* State)

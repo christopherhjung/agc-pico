@@ -79,7 +79,7 @@ ChannelSetup (agc_t *State)
 // changed data.
 
 void
-ChannelOutput (agc_t * State, int Channel, int Value)
+agc_channel_output (agc_t * State, int Channel, int Value)
 {
 
   if (!ChannelIsSetUp)

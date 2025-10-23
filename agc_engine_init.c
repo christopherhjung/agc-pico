@@ -235,12 +235,6 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
   int RetVal = 0, i, j, Bank;
   FILE *cd = NULL;
 
-#if !defined (WIN32) && !defined(WASI)
-  // The purpose of this is to make sure that getchar doesn't halt the program
-  // when there's no keystroke immediately available.
-  UnblockSocket (fileno (stdin));
-#endif
-
   // Fix for Issue #29 Return the values as the API documents
   if (RomImage)
     {

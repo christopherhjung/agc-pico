@@ -26,6 +26,10 @@
 
 #include <string.h>
 
+
+ringbuffer ringbuffer_in;
+ringbuffer ringbuffer_out;
+
 /*
  * Initialize the ringbuffer; make it empty.
  */
@@ -38,7 +42,7 @@ void ringbuffer_init (ringbuffer* buf)
  * If the ringbuffer is full, does nothing and returns 0.
  */
 int ringbuffer_put (ringbuffer* buf,
-                       unsigned char element[RINGBUFFER_ELEMENT_SIZE])
+                       unsigned char* element)
 {
   int i = (buf->head + RINGBUFFER_ELEMENT_SIZE) & (RINGBUFFER_CAPACITY - 1);
   if (i == buf->tail)
@@ -56,7 +60,7 @@ int ringbuffer_put (ringbuffer* buf,
  * If the ringbuffer is empty, does nothing and returns 0.
  */
 int ringbuffer_get(ringbuffer* buf,
-                      unsigned char element[RINGBUFFER_ELEMENT_SIZE])
+                      unsigned char* element)
 {
   if (buf->tail == buf->head)
     return 0; // empty
