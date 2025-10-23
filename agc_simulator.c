@@ -127,6 +127,10 @@ current engine state. */
 static void SimExecuteEngine()
 {
 	agc_engine (&Simulator.State);
+
+
+  agc_t* state = &Simulator.State;
+
 }
 
 

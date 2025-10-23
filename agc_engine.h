@@ -496,7 +496,6 @@ typedef struct
 #define DEFAULT_MAX_CLIENTS 10
 
 #ifdef AGC_ENGINE_C
-int DebugMode = 0;
 int SingleStepCounter = -2;		// -2 when not in --debug mode.
 int BacktraceInitialized = 0;		// Becomes -1 on error.
 // We have a backtrace circular buffer, in which we place an entry every
@@ -532,7 +531,6 @@ char Sbuffer[SHEIGHT][SWIDTH + 1];
 int Sheight = DEFAULT_SHEIGHT, Swidth = DEFAULT_SWIDTH;
 int LastRhcPitch = 0, LastRhcYaw = 0, LastRhcRoll = 0;
 #else //AGC_ENGINE_C
-extern int DebugMode;
 extern int SingleStepCounter;
 extern int BacktraceInitialized;
 extern BacktracePoint_t *BacktracePoints;

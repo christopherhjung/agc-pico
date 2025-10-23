@@ -108,7 +108,6 @@ ChannelOutput (agc_t * State, int Channel, int Value)
   //int n;
   Client_t *Client;
   unsigned char Packet[4];
-  extern int DebugMode;
   // Some output channels have purposes within the CPU, so we have to
   // account for those separately.
   if (Channel == 7)
@@ -133,8 +132,6 @@ ChannelOutput (agc_t * State, int Channel, int Value)
 	j = send (Client->Socket, (const char *) Packet, 4, MSG_NOSIGNAL);
 	if (j == SOCKET_ERROR && SOCKET_BROKEN)
 	  {
-	    if (!DebugMode)
-	      printf ("Removing socket %d\n", Clients[i].Socket);
 #ifdef unix
 	    close (Clients[i].Socket);
 #else
@@ -405,7 +402,6 @@ ChannelRoutineGeneric (void *State, void (*UpdatePeripherals) (void *, Client_t 
   static int TimeoutCount = 0;
   int i, j;
   Client_t *Client;
-  extern int DebugMode;
 
   // Initialize the server sockets, if needed.
   if (NumServers == 0)
@@ -425,11 +421,7 @@ ChannelRoutineGeneric (void *State, void (*UpdatePeripherals) (void *, Client_t 
 	if (Client->Socket != -1)
 	  {
 	    int ii;
-	    extern int DebugMode;
 	    UnblockSocket (Client->Socket);
-	    if (!DebugMode)
-	      printf ("Adding socket %d on port %d\n", Client->Socket,
-		      Portnum + i);
 	    Client->Size = 0;
 	    for (ii = 0; ii < 256; ii++)
 	      Client->ChannelMasks[ii] = 077777;
@@ -452,8 +444,6 @@ ChannelRoutineGeneric (void *State, void (*UpdatePeripherals) (void *, Client_t 
 	    j = send (Client->Socket, (const char *) dummyPacket, 4, MSG_NOSIGNAL);
 	    if (j == SOCKET_ERROR && SOCKET_BROKEN)
 	      {
-	        if (!DebugMode)
-		  printf ("Removing socket %d\n", Clients[i].Socket);
 #ifdef unix
 		close (Clients[i].Socket);
 #else
