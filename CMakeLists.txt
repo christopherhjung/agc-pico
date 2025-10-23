@@ -14,20 +14,8 @@ add_library(libyaAGC ${_libagc_src})
 add_executable(yaAGC ${_agc_src})
 target_compile_definitions(yaAGC PRIVATE NVER="${NVER}" NOREADLINE="yes" GDBMI)
 target_link_libraries(yaAGC PRIVATE libyaAGC m)
-if(Threads_FOUND)
-  target_link_libraries(yaAGC PRIVATE Threads::Threads)
-endif()
 
 add_library(regex regex.c)
-if(WIN32)
-  target_sources(yaAGC PRIVATE random.c)
-  target_link_libraries(yaAGC PRIVATE regex ${WINSOCK_LIBRARIES})
-endif()
-
-if(APPLE OR WIN32)
-  target_compile_definitions(regex PRIVATE STDC_HEADERS)
-  target_compile_definitions(yaAGC PRIVATE STDC_HEADERS)
-endif()
 
 
 
