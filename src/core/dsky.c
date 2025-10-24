@@ -5,7 +5,6 @@
 #include "core/ringbuffer.h"
 #include "agc_engine.h"
 
-#if false
 #include <sys/fcntl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -35,13 +34,9 @@ int kbhit() {
   return 0;
 }
 
-#endif
-
-
 
 void dsky_io (dsky_t *dsky)
 {
-
   int channel;
   int value;
   while (dsky_channel_input(&channel, &value))
@@ -61,7 +56,6 @@ void dsky_io (dsky_t *dsky)
     }
   }
 
-#if false
   if (kbhit())
   {
     int c = getchar();
@@ -87,7 +81,6 @@ void dsky_io (dsky_t *dsky)
         dsky_keyboard_press(c - '1' + KEY_ONE);
     }
   }
-#endif
 
 }
 

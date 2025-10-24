@@ -71,9 +71,7 @@ Simulator is initialized and subsequently executed.
 */
 int main (int argc, char *argv[])
 {
-#if false
   set_conio_terminal_mode();
-#endif
 
 	/* Declare Options and parse the command line */
 	Options_t *Options = CliParseArguments(argc, argv);
