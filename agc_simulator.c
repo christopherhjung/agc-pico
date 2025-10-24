@@ -260,39 +260,6 @@ static void SimManageTime(void)
 	else SimSleep();
 }
 
-int idx = 0;
-Keyboard keys[] = {
-  KEY_VERB,
-  KEY_NINE,
-  KEY_ONE,
-  KEY_ENTER
-};
-
-int kbhit() {
-  struct termios oldt, newt;
-  int ch;
-  int oldf;
-
-  tcgetattr(STDIN_FILENO, &oldt);
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-  ch = getchar();
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-  if (ch != EOF) {
-    ungetc(ch, stdin);
-    return 1;
-  }
-
-  return 0;
-}
-
 /**
 Execute the simulated CPU.  Expecting to ACCURATELY cycle the simulation every
 11.7 microseconds within Linux (or Win32) is a bit too much, I think.
@@ -319,49 +286,7 @@ void SimExecute(void)
 			/* Execute a cycle of the AGC engine */
 			SimExecuteEngine();
 
-		  int channel;
-		  int value;
-		  while (dsky_channel_input(&channel, &value))
-		  {
-		    if (channel == 010)
-		    {
-		      if (dsky_update_digit(&dsky, value))
-		        dsky_print(&dsky);
-		    }else if (channel == 011){
-		      dsky.comp_acty = (value & 2) != 0;
-		    }else if (channel == 0163){
-		      int is_off = (value & 040);
-		      dsky.noun.on = is_off == 0;
-		      dsky.verb.on = is_off == 0;
-		      dsky_print(&dsky);
-		    }
-		  }
-
-		  if (kbhit())
-		  {
-		    int c = getchar();
-		    switch (c)
-		    {
-		    case '0':
-		      dsky_keyboard_press(KEY_ZERO);
-		      break;
-		    case 'V':
-		    case 'v':
-		      dsky_keyboard_press(KEY_VERB);
-		      break;
-		    case 'N':
-		    case 'n':
-		      dsky_keyboard_press(KEY_NOUN);
-		      break;
-		    case 'E':
-		    case '\n':
-		      dsky_keyboard_press(KEY_ENTER);
-		      break;
-		    default:
-		      if ('1' <= c && c <= '9')
-		        dsky_keyboard_press(c - '1' + KEY_ONE);
-		    }
-		  }
+		  dsky_io(&dsky);
 
 		  /* Adjust the CycleCount */
 		  SimSetCycleCount(SIM_CYCLECOUNT_INC);

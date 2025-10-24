@@ -22,8 +22,6 @@ typedef enum
   KEY_NOUN = 31,
 } Keyboard;
 
-void dsky_keyboard_press (Keyboard Keycode);
-
 typedef struct
 {
   unsigned int plus:1;
@@ -50,6 +48,11 @@ typedef struct
   dsky_row_t rows[3];
   unsigned int comp_acty:1;
 } dsky_t;
+
+
+void dsky_io (dsky_t *dsky);
+
+void dsky_keyboard_press (Keyboard Keycode);
 
 void dsky_row_init(dsky_row_t* row);
 
