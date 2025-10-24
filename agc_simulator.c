@@ -274,7 +274,7 @@ a lot).  It's good enough for me, for NOW, but I'd be happy to take suggestions
 for how to improve it in a reasonably portable way.*/
 void SimExecute(void)
 {
-  dsky_t dsky = {0};
+  dsky_t dsky;
   dsky_init(&dsky);
 	while(1)
 	{

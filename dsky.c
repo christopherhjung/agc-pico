@@ -7,7 +7,7 @@
 
 #include "agc_engine.h"
 #include "ringbuffer.h"
-
+#include <string.h>
 
 int kbhit() {
   struct termios oldt, newt;
@@ -53,6 +53,7 @@ void dsky_io (dsky_t *dsky)
       dsky->noun.on = is_off == 0;
       dsky->verb.on = is_off == 0;
       dsky_print(dsky);
+      *((uint16_t*)&dsky->flags) = value;
     }
   }
 
@@ -149,6 +150,7 @@ void dsky_two_init(dsky_two_t* two)
 
 void dsky_init(dsky_t* dsky)
 {
+  memset(dsky, 0, sizeof(dsky_t));
   dsky->comp_acty = 0;
   dsky_two_init(&dsky->prog);
   dsky_two_init(&dsky->verb);
@@ -244,6 +246,7 @@ void dsky_two_print(dsky_two_t *two)
 
 void dsky_print(dsky_t *dsky)
 {
+  printf("%d\n", *((uint16_t*)&dsky->flags));
   printf("CA  PR\n");
   printf("%s", dsky->comp_acty ? "XX" : "  ");
   printf("  ");

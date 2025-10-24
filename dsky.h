@@ -42,6 +42,22 @@ typedef struct
 
 typedef struct
 {
+  unsigned int reserved3:6;
+  unsigned int EL_OFF:1;
+  unsigned int reserved2:1;
+  unsigned int STBY:1;
+  unsigned int RESTART:1;
+  unsigned int OPER_ERR:1;
+  unsigned int reserved1:1;
+  unsigned int VN_FLASH:1;
+  unsigned int KEY_REL:1;
+  unsigned int TEMP:1;
+  unsigned int AGC_WARN:1;
+} dsky_flags_t;
+
+typedef struct
+{
+  dsky_flags_t flags;
   dsky_two_t prog;
   dsky_two_t verb;
   dsky_two_t noun;
