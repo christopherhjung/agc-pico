@@ -224,124 +224,124 @@ agc_load_binfile (agc_state_t *State, const char *RomImage)
 }
 
 int
-agc_engine_init (agc_state_t * State, const char *RomImage, const char *CoreDump,
-		 int AllOrErasable)
+agc_engine_init (agc_state_t * state, const char *rom_image, const char *core_dump,
+		 int all_or_erasable)
 {
 #if defined (WIN32) || defined (__APPLE__)  
   uint64_t lli;
 #else
   unsigned long long lli;
 #endif  
-  int RetVal = 0, i, j, Bank;
+  int ret = 0, i, j, Bank;
   FILE *cd = NULL;
 
   // Fix for Issue #29 Return the values as the API documents
-  if (RomImage)
+  if (rom_image)
     {
-      RetVal = agc_load_binfile (State, RomImage);
-      if (RetVal > 0)
+      ret = agc_load_binfile (state, rom_image);
+      if (ret > 0)
 	goto Done;
     }
 
   // Clear i/o channels.
   for (i = 0; i < NUM_CHANNELS; i++)
-    State->inputChannel[i] = 0;
-  State->inputChannel[030] = 037777;
-  State->inputChannel[031] = 077777;
-  State->inputChannel[032] = 077777;
-  State->inputChannel[033] = 077777;
+    state->inputChannel[i] = 0;
+  state->inputChannel[030] = 037777;
+  state->inputChannel[031] = 077777;
+  state->inputChannel[032] = 077777;
+  state->inputChannel[033] = 077777;
 
   // Clear erasable memory.
   for (Bank = 0; Bank < 8; Bank++)
     for (j = 0; j < 0400; j++)
-      State->Erasable[Bank][j] = 0;
-  State->Erasable[0][RegZ] = 04000;	// Initial program counter.
+      state->Erasable[Bank][j] = 0;
+  state->Erasable[0][RegZ] = 04000;	// Initial program counter.
 
   // Set up the CPU state variables that aren't part of normal memory.
-  State->cycle_counter = 0;
-  State->extra_code = 0;
-  State->allow_interrupt = 1; // The GOJAM sequence enables interrupts
-  State->interrupt_requests[8] = 1;	// DOWNRUPT.
+  state->cycle_counter = 0;
+  state->extra_code = 0;
+  state->allow_interrupt = 1; // The GOJAM sequence enables interrupts
+  state->interrupt_requests[8] = 1;	// DOWNRUPT.
   //State->RegA16 = 0;
-  State->pend_flag = 0;
-  State->pend_delay = 0;
-  State->extra_delay = 0;
+  state->pend_flag = 0;
+  state->pend_delay = 0;
+  state->extra_delay = 0;
   //State->RegQ16 = 0;
 
-  State->output_channel_7 = 0;
+  state->output_channel_7 = 0;
   for (j = 0; j < 16; j++)
-    State->output_channel_10[j] = 0;
-  State->index_value = 0;
+    state->output_channel_10[j] = 0;
+  state->index_value = 0;
   for (j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
-    State->interrupt_requests[j] = 0;
-  State->in_isr = 0;
-  State->substitute_instruction = 0;
-  State->downrupt_time_valid = 1;
-  State->downrupt_time = 0;
-  State->downlink = 0;
+    state->interrupt_requests[j] = 0;
+  state->in_isr = 0;
+  state->substitute_instruction = 0;
+  state->downrupt_time_valid = 1;
+  state->downrupt_time = 0;
+  state->downlink = 0;
 
-  State->night_watchman = 0;
-  State->night_watchman_tripped = 0;
-  State->rupt_lock = 0;
-  State->no_rupt = 0;
-  State->tc_trap = 0;
-  State->no_tc = 0;
-  State->parity_fail = 0;
+  state->night_watchman = 0;
+  state->night_watchman_tripped = 0;
+  state->rupt_lock = 0;
+  state->no_rupt = 0;
+  state->tc_trap = 0;
+  state->no_tc = 0;
+  state->parity_fail = 0;
 
-  State->warning_filter = 0;
-  State->generated_warning = 0;
+  state->warning_filter = 0;
+  state->generated_warning = 0;
 
-  State->restart_light = 0;
-  State->standby = 0;
-  State->sby_pressed = 0;
-  State->sby_still_pressed = 0;
+  state->restart_light = 0;
+  state->standby = 0;
+  state->sby_pressed = 0;
+  state->sby_still_pressed = 0;
 
-  State->next_z = 0;
-  State->scale_counter = 0;
-  State->channel_routine_count = 0;
+  state->next_z = 0;
+  state->scale_counter = 0;
+  state->channel_routine_count = 0;
 
-  State->dsky_timer = 0;
-  State->dsky_flash = 0;
-  State->dsky_channel_163 = 0;
+  state->dsky_timer = 0;
+  state->dsky_flash = 0;
+  state->dsky_channel_163 = 0;
 
-  State->took_bzf = 0;
-  State->took_bzmf = 0;
+  state->took_bzf = 0;
+  state->took_bzmf = 0;
 
-  State->trap_31a = 0;
-  State->trap_31b = 0;
-  State->trap_32 = 0;
+  state->trap_31a = 0;
+  state->trap_31b = 0;
+  state->trap_32 = 0;
 
-  State->radar_gate_counter = 0;
+  state->radar_gate_counter = 0;
 
   if (initializeSunburst37)
     {
-      State->Erasable[0][0067] = 077777;
-      State->Erasable[0][0157] = 077777;
-      State->Erasable[0][0375] = 005605;
-      State->Erasable[0][0376] = 004003;
+      state->Erasable[0][0067] = 077777;
+      state->Erasable[0][0157] = 077777;
+      state->Erasable[0][0375] = 005605;
+      state->Erasable[0][0376] = 004003;
     }
 
-  if (CoreDump != NULL)
+  if (core_dump != NULL)
     {
-      cd = fopen (CoreDump, "r");
+      cd = fopen (core_dump, "r");
       if (cd == NULL)
 	{
-	  if (AllOrErasable)
-	    RetVal = 6;
+	  if (all_or_erasable)
+	    ret = 6;
 	  else
-	    RetVal = 0;
+	    ret = 0;
 	}
       else
 	{
-	  RetVal = 5;
+	  ret = 5;
 
 	  // Load up the i/o channels.
 	  for (i = 0; i < NUM_CHANNELS; i++)
 	    {
 	      if (1 != fscanf (cd, "%o", &j))
 		goto Done;
-	      if (AllOrErasable)
-		State->inputChannel[i] = j;
+	      if (all_or_erasable)
+		state->inputChannel[i] = j;
 	    }
 
 	  // Load up erasable memory.
@@ -350,82 +350,82 @@ agc_engine_init (agc_state_t * State, const char *RomImage, const char *CoreDump
 	      {
 		if (1 != fscanf (cd, "%o", &i))
 		  goto Done;
-		if (AllOrErasable || Bank > 0 || j >= 010)
-		  State->Erasable[Bank][j] = i;
+		if (all_or_erasable || Bank > 0 || j >= 010)
+		  state->Erasable[Bank][j] = i;
 	      }
 
-	  if (AllOrErasable)
+	  if (all_or_erasable)
 	    {
 	      // Set up the CPU state variables that aren't part of normal memory.
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->cycle_counter = i;
+	      state->cycle_counter = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->extra_code = i;
+	      state->extra_code = i;
 	      // I've seen no indication so far of a reset value for interrupt-enable. 
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->allow_interrupt = i;
+	      state->allow_interrupt = i;
 	      //if (1 != fscanf (cd, "%o", &i))
 	      //  goto Done;
 	      //State->RegA16 = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->pend_flag = i;
+	      state->pend_flag = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->pend_delay = i;
+	      state->pend_delay = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->extra_delay = i;
+	      state->extra_delay = i;
 	      //if (1 != fscanf (cd, "%o", &i))
 	      //  goto Done;
 	      //State->RegQ16 = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->output_channel_7 = i;
+	      state->output_channel_7 = i;
 	      for (j = 0; j < 16; j++)
 		{
 		  if (1 != fscanf (cd, "%o", &i))
 		    goto Done;
-		  State->output_channel_10[j] = i;
+		  state->output_channel_10[j] = i;
 		}
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->index_value = i;
+	      state->index_value = i;
 	      for (j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
 		{
 		  if (1 != fscanf (cd, "%o", &i))
 		    goto Done;
-		  State->interrupt_requests[j] = i;
+		  state->interrupt_requests[j] = i;
 		}
 	      // Override the above and make DOWNRUPT always enabled at start.
-	      State->interrupt_requests[8] = 1;
+	      state->interrupt_requests[8] = 1;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->in_isr = i;
+	      state->in_isr = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->substitute_instruction = i;
+	      state->substitute_instruction = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->downrupt_time_valid = i;
+	      state->downrupt_time_valid = i;
 	      if (1 != fscanf (cd, "%llo", &lli))
 		goto Done;
-	      State->downrupt_time = lli;
+	      state->downrupt_time = lli;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->downlink = i;
+	      state->downlink = i;
 	    }
 
-	  RetVal = 0;
+	  ret = 0;
 	}
     }
 
   Done: if (cd != NULL)
     fclose (cd);
-  return (RetVal);
+  return (ret);
 }
 
 //-------------------------------------------------------------------------------

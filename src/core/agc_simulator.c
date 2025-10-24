@@ -52,7 +52,7 @@
 /** Declare the singleton Simulator object instance */
 static sim_t Simulator;
 
-static int SimInitializeEngine(void)
+static int sim_initialize_engine(void)
 {
 	int result = 0;
 
@@ -149,15 +149,7 @@ int sim_init(opt_t* Options)
 	/* If we are not in quiet mode display the version info */
 
 	/* Initialize the AGC Engine */
-	result = SimInitializeEngine();
-
-	/* Initialize the Debugger if running with debug mode */
-
-//	if (Options->cdu_log)
-//	{
-//	  extern FILE *CduLog;
-//	  CduLog = fopen (Options->cdu_log, "w");
-//	}
+	result = sim_initialize_engine();
 
 	/* Initialize realtime and cycle counters */
 	Simulator.real_time_offset = times (&Simulator.dummy_time);	// The starting time of the program.
