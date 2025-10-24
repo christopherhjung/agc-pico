@@ -165,7 +165,6 @@ int agc_load_binfile(agc_state_t* state, const char* RomImage)
   state->check_parity = 0;
   memset(&state->parities, 0, sizeof(state->parities));
 
-  bank = 2;
   for(bank = 2, j = 0, i = 0; i < n; i++)
   {
     unsigned char In[2];
@@ -236,11 +235,11 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
 
   // Clear i/o channels.
   for(i = 0; i < NUM_CHANNELS; i++)
-    state->inputChannel[i] = 0;
-  state->inputChannel[030] = 037777;
-  state->inputChannel[031] = 077777;
-  state->inputChannel[032] = 077777;
-  state->inputChannel[033] = 077777;
+    state->input_channel[i] = 0;
+  state->input_channel[030] = 037777;
+  state->input_channel[031] = 077777;
+  state->input_channel[032] = 077777;
+  state->input_channel[033] = 077777;
 
   // Clear erasable memory.
   for(Bank = 0; Bank < 8; Bank++)
@@ -332,7 +331,7 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
         if(1 != fscanf(cd, "%o", &j))
           goto Done;
         if(all_or_erasable)
-          state->inputChannel[i] = j;
+          state->input_channel[i] = j;
       }
 
       // Load up erasable memory.

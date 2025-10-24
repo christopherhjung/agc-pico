@@ -296,7 +296,7 @@ typedef struct
   uint32_t parities[40 * (02000 / 32)];
   // There are also "input/output channels".  Output channels are acted upon
   // immediately, but input channels are buffered from asynchronous data.
-  int16_t inputChannel[NUM_CHANNELS];
+  int16_t input_channel[NUM_CHANNELS];
   int16_t output_channel_7;
   int16_t output_channel_10[16];
   // The indexing value.
@@ -362,7 +362,7 @@ void    cpu_write_io(agc_state_t* state, int Address, int Value);
 int16_t overflow_corrected(int Value);
 int     sign_extend(int16_t Word);
 int     add_sp_16(int Addend1, int Addend2);
-void unprogrammed_increment(agc_state_t* State, int Counter, int IncType);
+void unprogrammed_increment(agc_state_t* state, int counter, int inc_type);
 
 // API for yaAGC-to-peripheral communications.
 void agc_channel_output(agc_state_t* State, int channel, int value);

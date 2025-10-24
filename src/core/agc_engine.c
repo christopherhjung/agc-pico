@@ -557,7 +557,7 @@ int read_io(agc_state_t* state, int Address)
     IoReadCounts[Address]++;
   if(Address == RegL || Address == RegQ)
     return (state->erasable[0][Address]);
-  return (state->inputChannel[Address]);
+  return (state->input_channel[Address]);
 }
 
 void write_io(agc_state_t* state, int Address, int Value)
@@ -587,10 +587,10 @@ void write_io(agc_state_t* state, int Address, int Value)
   {
     // Channel 33 bits 11-15 are controlled internally, so don't let
     // anybody write to them
-    Value = (state->inputChannel[Address] & 076000) | (Value & 001777);
+    Value = (state->input_channel[Address] & 076000) | (Value & 001777);
   }
 
-  state->inputChannel[Address] = Value;
+  state->input_channel[Address] = Value;
 }
 
 void cpu_write_io(agc_state_t* state, int Address, int Value)
@@ -617,16 +617,16 @@ void cpu_write_io(agc_state_t* state, int Address, int Value)
     // Grant via Markus Joachim.  Although channel 033 is an input channel,
     // the CPU writes to it from time to time, to "reset" bits 11-15 to 1.
     // Apparently, these are latched inputs, and this resets the latches.
-    state->inputChannel[Address] |= 076000;
+    state->input_channel[Address] |= 076000;
 
     // Don't allow the AGC warning input to be reset if the light
     // is still on
     if(state->warning_filter > WARNING_FILTER_THRESHOLD)
-      state->inputChannel[Address] &= 057777;
+      state->input_channel[Address] &= 057777;
 
     // The actual value that was written now doesn't matter, so make sure
     // no changes occur.
-    Value = state->inputChannel[Address];
+    Value = state->input_channel[Address];
   }
   else if(Address == 077)
   {
@@ -674,7 +674,7 @@ void cpu_write_io(agc_state_t* state, int Address, int Value)
 // pointer to the actual word in the simulated memory.  In other words, here
 // we take memory bank-selection into account.
 
-static int16_t* FindMemoryWord(agc_state_t* state, int addr_12)
+static int16_t* find_memory_word(agc_state_t* state, int addr_12)
 {
   //int PseudoAddress;
   int      adj_eb, adj_fb;
@@ -739,7 +739,7 @@ static int16_t* FindMemoryWord(agc_state_t* state, int addr_12)
       // The program is trying to access unused fixed memory, which
       // will trigger a parity alarm.
       state->parity_fail = 1;
-      state->inputChannel[077] |= CH77_PARITY_FAIL;
+      state->input_channel[077] |= CH77_PARITY_FAIL;
     }
   }
   return addr;
@@ -1163,11 +1163,11 @@ static int16_t neg_sp(int16_t Value)
 static int TrapPIPA = 0;
 
 // 1's-complement increment
-int counter_pinc(int16_t* Counter)
+int counter_pinc(int16_t* counter)
 {
   int16_t i;
   int     Overflow = 0;
-  i                = *Counter;
+  i                = *counter;
   if(i == 037777)
   {
     Overflow = 1;
@@ -1186,16 +1186,16 @@ int counter_pinc(int16_t* Counter)
     if(TrapPIPA)
       printf(" %o\n", i);
   }
-  *Counter = i;
+  *counter = i;
   return (Overflow);
 }
 
 // 1's-complement decrement, but only of negative integers.
-int counter_minc(int16_t* Counter)
+int counter_minc(int16_t* counter)
 {
   int16_t i;
   int     ovf = 0;
-  i                = *Counter;
+  i                = *counter;
   if(i == (int16_t)040000)
   {
     ovf = 1;
@@ -1214,21 +1214,21 @@ int counter_minc(int16_t* Counter)
     if(TrapPIPA)
       printf(" %o\n", i);
   }
-  *Counter = i;
+  *counter = i;
   return (ovf);
 }
 
 // 2's-complement increment.
-int counter_pcdu(int16_t* Counter)
+int counter_pcdu(int16_t* counter)
 {
   int16_t i;
   int     Overflow = 0;
-  i                = *Counter;
+  i                = *counter;
   if(i == (int16_t)077777)
     Overflow = 1;
   i++;
   i &= 077777;
-  *Counter = i;
+  *counter = i;
   return (Overflow);
 }
 
@@ -1247,16 +1247,16 @@ int counter_mcdu(int16_t* Counter)
 }
 
 // Diminish increment.
-int counter_dinc(agc_state_t* State, int CounterNum, int16_t* Counter)
+int counter_dinc(agc_state_t* state, int counter_num, int16_t* counter)
 {
   int     RetVal = 0;
   int16_t i;
-  i = *Counter;
+  i = *counter;
   if(i == AGC_P0 || i == AGC_M0) // Zero?
   {
     // Emit a ZOUT.
-    if(CounterNum != 0)
-      agc_channel_output(State, 0x80 | CounterNum, 017);
+    if(counter_num != 0)
+      agc_channel_output(state, 0x80 | counter_num, 017);
 
     RetVal = 1;
   }
@@ -1265,46 +1265,46 @@ int counter_dinc(agc_state_t* State, int CounterNum, int16_t* Counter)
     i = add_sp_16(sign_extend(i), sign_extend(AGC_P1)) & 077777;
 
     // Emit a MOUT.
-    if(CounterNum != 0)
-      agc_channel_output(State, 0x80 | CounterNum, 016);
+    if(counter_num != 0)
+      agc_channel_output(state, 0x80 | counter_num, 016);
   }
   else // Positive?
   {
     i = add_sp_16(sign_extend(i), sign_extend(AGC_M1)) & 077777;
 
     // Emit a POUT.
-    if(CounterNum != 0)
-      agc_channel_output(State, 0x80 | CounterNum, 015);
+    if(counter_num != 0)
+      agc_channel_output(state, 0x80 | counter_num, 015);
   }
 
-  *Counter = i;
+  *counter = i;
 
   return (RetVal);
 }
 
 // Left-shift increment.
-int counter_shinc(int16_t* Counter)
+int counter_shinc(int16_t* counter)
 {
   int16_t i;
   int     Overflow = 0;
-  i                = *Counter;
+  i                = *counter;
   if(020000 & i)
     Overflow = 1;
   i        = (i << 1) & 037777;
-  *Counter = i;
+  *counter = i;
   return (Overflow);
 }
 
 // Left-shift and add increment.
-int counter_shanc(int16_t* Counter)
+int counter_shanc(int16_t* counter)
 {
   int16_t i;
   int     Overflow = 0;
-  i                = *Counter;
+  i                = *counter;
   if(020000 & i)
     Overflow = 1;
   i        = ((i << 1) + 1) & 037777;
-  *Counter = i;
+  *counter = i;
   return (Overflow);
 }
 
@@ -1312,17 +1312,17 @@ int counter_shanc(int16_t* Counter)
 // AUG, and DIM instructins.  The docs aren't very forthcoming as to
 // which counter registers are affected by this ... but still.
 
-static void interrupt_requests(agc_state_t* state, int16_t Address10, int Sum)
+static void interrupt_requests(agc_state_t* state, int16_t address_10, int sum)
 {
-  if(value_ovf(Sum) == AGC_P0)
+  if(value_ovf(sum) == AGC_P0)
     return;
-  if(IsReg(Address10, RegTIME1))
+  if(IsReg(address_10, RegTIME1))
     counter_pinc(&c(RegTIME2));
-  else if(IsReg(Address10, RegTIME5))
+  else if(IsReg(address_10, RegTIME5))
     state->interrupt_requests[2] = 1;
-  else if(IsReg(Address10, RegTIME3))
+  else if(IsReg(address_10, RegTIME3))
     state->interrupt_requests[3] = 1;
-  else if(IsReg(Address10, RegTIME4))
+  else if(IsReg(address_10, RegTIME4))
     state->interrupt_requests[4] = 1;
   // TIME6 requires a ZOUT to happen during a DINC sequence for its
   // interrupt to fire
@@ -1357,11 +1357,11 @@ static void interrupt_requests(agc_state_t* state, int16_t Address10, int Sum)
 
 typedef struct
 {
-  int      Ptr;          // Index of next entry being pulled.
-  int      Size;         // Number of entries.
-  int      IntervalType; // 0,1,2,0,1,2,...
-  uint64_t NextUpdate; // Cycle count at which next counter update occurs.
-  int32_t Counts[MAX_CDU_FIFO_ENTRIES];
+  int      ptr;          // Index of next entry being pulled.
+  int      size;         // Number of entries.
+  int      interval_type; // 0,1,2,0,1,2,...
+  uint64_t next_update; // Cycle count at which next counter update occurs.
+  int32_t counts[MAX_CDU_FIFO_ENTRIES];
 } cdu_fifo_t;
 
 static cdu_fifo_t CduFifos[NUM_CDU_FIFOS]; // For registers 032, 033, and 034.
@@ -1379,73 +1379,71 @@ static int CduChecker = 0; // 0, 1, ..., NUM_CDU_FIFOS-1, 0, 1, ...
 //	021	Upper bits = 10
 //	023	Upper bits = 11
 // The least-significant 30 bits are simply the absolute value of the count.
-static void push_cdu_fifo(agc_state_t* State, int Counter, int IncType)
+static void push_cdu_fifo(agc_state_t* state, int counter, int inc_type)
 {
-  cdu_fifo_t* CduFifo;
-  int        Next, Interval;
-  int32_t    Base;
-  if(Counter < FIRST_CDU || Counter >= FIRST_CDU + NUM_CDU_FIFOS)
+  int32_t base, interval;
+  if(counter < FIRST_CDU || counter >= FIRST_CDU + NUM_CDU_FIFOS)
     return;
-  switch(IncType)
+  switch(inc_type)
   {
     case 1:
-      Interval = 213;
-      Base     = 0x00000000;
+      interval = 213;
+      base     = 0x00000000;
       break;
     case 3:
-      Interval = 213;
-      Base     = 0x40000000;
+      interval = 213;
+      base     = 0x40000000;
       break;
     case 021:
-      Interval = 13;
-      Base     = 0x80000000;
+      interval = 13;
+      base     = 0x80000000;
       break;
     case 023:
-      Interval = 13;
-      Base     = 0xC0000000;
+      interval = 13;
+      base     = 0xC0000000;
       break;
     default:
       return;
   }
   if(CduLog != NULL)
-    fprintf(CduLog, "< " FORMAT_64U " %o %02o\n", State->cycle_counter, Counter, IncType);
-  CduFifo = &CduFifos[Counter - FIRST_CDU];
+    fprintf(CduLog, "< " FORMAT_64U " %o %02o\n", state->cycle_counter, counter, inc_type);
+  cdu_fifo_t* cdu_fifo = &CduFifos[counter - FIRST_CDU];
   // It's a little easier if the FIFO is completely empty.
-  if(CduFifo->Size == 0)
+  if(cdu_fifo->size == 0)
   {
-    CduFifo->Ptr          = 0;
-    CduFifo->Size         = 1;
-    CduFifo->Counts[0]    = Base + 1;
-    CduFifo->NextUpdate   = State->cycle_counter + Interval;
-    CduFifo->IntervalType = 1;
+    cdu_fifo->ptr          = 0;
+    cdu_fifo->size         = 1;
+    cdu_fifo->counts[0]    = base + 1;
+    cdu_fifo->next_update   = state->cycle_counter + interval;
+    cdu_fifo->interval_type = 1;
     return;
   }
   // Not empty, so find the last entry in the FIFO.
-  Next = CduFifo->Ptr + CduFifo->Size - 1;
-  if(Next >= MAX_CDU_FIFO_ENTRIES)
-    Next -= MAX_CDU_FIFO_ENTRIES;
+  int32_t next = cdu_fifo->ptr + cdu_fifo->size - 1;
+  if(next >= MAX_CDU_FIFO_ENTRIES)
+    next -= MAX_CDU_FIFO_ENTRIES;
   // Last entry has different sign from the new data?
-  if((CduFifo->Counts[Next] & 0xC0000000) != (unsigned)Base)
+  if((cdu_fifo->counts[next] & 0xC0000000) != (unsigned)base)
   {
     // The sign is different, so we have to add a new entry to the
     // FIFO.
-    if(CduFifo->Size >= MAX_CDU_FIFO_ENTRIES)
+    if(cdu_fifo->size >= MAX_CDU_FIFO_ENTRIES)
     {
       // No place to put it, so drop the data.
       return;
     }
-    CduFifo->Size++;
-    Next++;
-    if(Next >= MAX_CDU_FIFO_ENTRIES)
-      Next -= MAX_CDU_FIFO_ENTRIES;
-    CduFifo->Counts[Next] = Base + 1;
+    cdu_fifo->size++;
+    next++;
+    if(next >= MAX_CDU_FIFO_ENTRIES)
+      next -= MAX_CDU_FIFO_ENTRIES;
+    cdu_fifo->counts[next] = base + 1;
     return;
   }
   // Okay, add in the new data to the last FIFO entry.  The sign is assured
   // to be compatible.  The size of the FIFO doesn't increase. We also don't
   // bother to check for arithmetic overflow, since only the wildest IMU
   // failure could cause it.
-  CduFifo->Counts[Next]++;
+  cdu_fifo->counts[next]++;
 }
 
 // Here's an auxiliary function to perform the next available PCDU or MCDU
@@ -1453,45 +1451,45 @@ static void push_cdu_fifo(agc_state_t* State, int Counter, int IncType)
 // each time around (in order to preserve proper cycle counts), so this function
 // must be called at at least an 6400*NUM_CDU_FIFO cps rate.  Returns 0 if no
 // counter was updated, non-zero if a counter was updated.
-static int sdu_fifo(agc_state_t* State)
+static int sdu_fifo(agc_state_t* state)
 {
-  int        Count, RetVal = 0, HighRate, DownCount;
-  cdu_fifo_t* CduFifo;
-  int16_t*   Ch;
+  int        count, ret = 0, high_rate, down_count;
+  cdu_fifo_t* cdu_fifo;
+  int16_t*   ch;
   // See if there are any pending PCDU or MCDU counts we need to apply.  We only
   // check one of the CDUs, and the CDU to check is indicated by CduChecker.
-  CduFifo = &CduFifos[CduChecker];
+  cdu_fifo = &CduFifos[CduChecker];
 
-  if(CduFifo->Size > 0 && State->cycle_counter >= CduFifo->NextUpdate)
+  if(cdu_fifo->size > 0 && state->cycle_counter >= cdu_fifo->next_update)
   {
     // Update the counter.
-    Ch        = &State->erasable[0][CduChecker + FIRST_CDU];
-    Count     = CduFifo->Counts[CduFifo->Ptr];
-    HighRate  = (Count & 0x80000000);
-    DownCount = (Count & 0x40000000);
-    if(DownCount)
+    ch        = &state->erasable[0][CduChecker + FIRST_CDU];
+    count     = cdu_fifo->counts[cdu_fifo->ptr];
+    high_rate  = (count & 0x80000000);
+    down_count = (count & 0x40000000);
+    if(down_count)
     {
-      counter_mcdu(Ch);
+      counter_mcdu(ch);
       if(CduLog != NULL)
-        fprintf(CduLog, ">\t\t" FORMAT_64U " %o 03\n", State->cycle_counter, CduChecker + FIRST_CDU);
+        fprintf(CduLog, ">\t\t" FORMAT_64U " %o 03\n", state->cycle_counter, CduChecker + FIRST_CDU);
     }
     else
     {
-      counter_pcdu(Ch);
+      counter_pcdu(ch);
       if(CduLog != NULL)
-        fprintf(CduLog, ">\t\t" FORMAT_64U " %o 01\n", State->cycle_counter, CduChecker + FIRST_CDU);
+        fprintf(CduLog, ">\t\t" FORMAT_64U " %o 01\n", state->cycle_counter, CduChecker + FIRST_CDU);
     }
-    Count--;
+    count--;
     // Update the FIFO.
-    if(0 != (Count & ~0xC0000000))
-      CduFifo->Counts[CduFifo->Ptr] = Count;
+    if(0 != (count & ~0xC0000000))
+      cdu_fifo->counts[cdu_fifo->ptr] = count;
     else
     {
       // That FIFO entry is exhausted.  Remove it from the FIFO.
-      CduFifo->Size--;
-      CduFifo->Ptr++;
-      if(CduFifo->Ptr >= MAX_CDU_FIFO_ENTRIES)
-        CduFifo->Ptr = 0;
+      cdu_fifo->size--;
+      cdu_fifo->ptr++;
+      if(cdu_fifo->ptr >= MAX_CDU_FIFO_ENTRIES)
+        cdu_fifo->ptr = 0;
     }
     // And set next update time.
     // Set up for next update time.  The intervals is are of the form
@@ -1499,48 +1497,48 @@ static int sdu_fifo(agc_state_t* State)
     // This is done because with a cycle type of 1024000/12 cycles per
     // second, the exact CDU update times don't fit on exact cycle
     // boundaries, but every 3rd CDU update does hit a cycle boundary.
-    if(CduFifo->NextUpdate == 0)
-      CduFifo->NextUpdate = State->cycle_counter;
-    if(CduFifo->IntervalType < 2)
+    if(cdu_fifo->next_update == 0)
+      cdu_fifo->next_update = state->cycle_counter;
+    if(cdu_fifo->interval_type < 2)
     {
-      if(HighRate)
-        CduFifo->NextUpdate += 13;
+      if(high_rate)
+        cdu_fifo->next_update += 13;
       else
-        CduFifo->NextUpdate += 213;
-      CduFifo->IntervalType++;
+        cdu_fifo->next_update += 213;
+      cdu_fifo->interval_type++;
     }
     else
     {
-      if(HighRate)
-        CduFifo->NextUpdate += 14;
+      if(high_rate)
+        cdu_fifo->next_update += 14;
       else
-        CduFifo->NextUpdate += 214;
-      CduFifo->IntervalType = 0;
+        cdu_fifo->next_update += 214;
+      cdu_fifo->interval_type = 0;
     }
     // Return an indication that a counter was updated.
-    RetVal = 1;
+    ret = 1;
   }
 
   CduChecker++;
   if(CduChecker >= NUM_CDU_FIFOS)
     CduChecker = 0;
 
-  return (RetVal);
+  return (ret);
 }
 
 //----------------------------------------------------------------------------
 // This function is used to update the counter registers on the basis of
 // commands received from the outside world.
 
-void unprogrammed_increment(agc_state_t* State, int Counter, int IncType)
+void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
 {
   int16_t* Ch;
   int      Overflow = 0;
-  Counter &= 0x7f;
-  Ch = &State->erasable[0][Counter];
+  counter &= 0x7f;
+  Ch = &state->erasable[0][counter];
   if(COVERAGE_COUNTS)
-    ErasableWriteCounts[0][Counter]++;
-  switch(IncType)
+    ErasableWriteCounts[0][counter]++;
+  switch(inc_type)
   {
     case 0:
       //TrapPIPA = (Counter >= 037 && Counter <= 041);
@@ -1549,8 +1547,8 @@ void unprogrammed_increment(agc_state_t* State, int Counter, int IncType)
     case 1:
     case 021:
       // For the CDUX,Y,Z counters, push the command into a FIFO.
-      if(Counter >= FIRST_CDU && Counter < FIRST_CDU + NUM_CDU_FIFOS)
-        push_cdu_fifo(State, Counter, IncType);
+      if(counter >= FIRST_CDU && counter < FIRST_CDU + NUM_CDU_FIFOS)
+        push_cdu_fifo(state, counter, inc_type);
       else
         Overflow = counter_pcdu(Ch);
       break;
@@ -1561,13 +1559,13 @@ void unprogrammed_increment(agc_state_t* State, int Counter, int IncType)
     case 3:
     case 023:
       // For the CDUX,Y,Z counters, push the command into a FIFO.
-      if(Counter >= FIRST_CDU && Counter < FIRST_CDU + NUM_CDU_FIFOS)
-        push_cdu_fifo(State, Counter, IncType);
+      if(counter >= FIRST_CDU && counter < FIRST_CDU + NUM_CDU_FIFOS)
+        push_cdu_fifo(state, counter, inc_type);
       else
         Overflow = counter_mcdu(Ch);
       break;
     case 4:
-      Overflow = counter_dinc(State, Counter, Ch);
+      Overflow = counter_dinc(state, counter, Ch);
       break;
     case 5:
       Overflow = counter_shinc(Ch);
@@ -1603,7 +1601,7 @@ static int BurstOutput(agc_state_t* State, int DriveBitMask, int CounterRegister
   else
     return (0);
   // Driving this axis?
-  DriveBit = (State->inputChannel[014] & DriveBitMask);
+  DriveBit = (State->input_channel[014] & DriveBitMask);
   // If so, we must retrieve the count from the counter register.
   if(DriveBit)
   {
@@ -1656,7 +1654,7 @@ static void update_dsky(agc_state_t* State)
     ~(DSKY_KEY_REL | DSKY_VN_FLASH | DSKY_OPER_ERR | DSKY_RESTART
       | DSKY_STBY | DSKY_AGC_WARN | DSKY_TEMP);
 
-  if(State->inputChannel[013] & 01000)
+  if(State->input_channel[013] & 01000)
     // The light test is active. Light RESTART and STBY.
     State->dsky_channel_163 |= DSKY_RESTART | DSKY_STBY; //
 
@@ -1669,13 +1667,13 @@ static void update_dsky(agc_state_t* State)
     State->dsky_channel_163 |= DSKY_RESTART;
 
   // Light TEMP if channel 11 bit 4 is set, or channel 30 bit 15 is set
-  if((State->inputChannel[011] & 010) || (State->inputChannel[030] & 040000))
+  if((State->input_channel[011] & 010) || (State->input_channel[030] & 040000))
     State->dsky_channel_163 |= DSKY_TEMP;
 
   // Set KEY REL and OPER ERR according to channel 11
-  if(State->inputChannel[011] & DSKY_KEY_REL)
+  if(State->input_channel[011] & DSKY_KEY_REL)
     State->dsky_channel_163 |= DSKY_KEY_REL;
-  if(State->inputChannel[011] & DSKY_OPER_ERR)
+  if(State->input_channel[011] & DSKY_OPER_ERR)
     State->dsky_channel_163 |= DSKY_OPER_ERR;
 
   // Turn on the AGC warning light if the warning filter is above its threshold
@@ -1684,7 +1682,7 @@ static void update_dsky(agc_state_t* State)
     State->dsky_channel_163 |= DSKY_AGC_WARN;
 
     // Set the AGC Warning input bit in channel 33
-    State->inputChannel[033] &= 057777;
+    State->input_channel[033] &= 057777;
   }
 
   // Update the DSKY flash counter based on the DSKY timer
@@ -1698,7 +1696,7 @@ static void update_dsky(agc_state_t* State)
   if(!State->standby && State->dsky_flash == 0)
   {
     // If V/N FLASH is high, then the lights are turned off
-    if(State->inputChannel[011] & DSKY_VN_FLASH)
+    if(State->input_channel[011] & DSKY_VN_FLASH)
       State->dsky_channel_163 |= DSKY_VN_FLASH;
 
     // Flash off the KEY REL and OPER ERR lamps
@@ -1718,7 +1716,7 @@ static void update_dsky(agc_state_t* State)
 // results in all cases, including those that result in "total nonsense".
 // If A, L, or Z are the divisor, it assumes that the unexpected transformations
 // have already been applied to the "divisor" argument.
-static void SimulateDV(agc_state_t* state, uint16_t divisor)
+static void simulate_dv(agc_state_t* state, uint16_t divisor)
 {
   uint16_t dividend_sign = 0;
   uint16_t divisor_sign  = 0;
@@ -1833,7 +1831,6 @@ static unsigned ImuChannel14 = 0;
 
 int agc_engine(agc_state_t* state)
 {
-  int i, j;
   uint16_t pc, inst, /*OpCode,*/ quarter_code, s_extra_code;
   int16_t* where_word;
   uint16_t address_12, address_10, address_9;
@@ -1929,7 +1926,7 @@ int agc_engine(agc_state_t* state)
     return (0);
   }
 
-  if(state->inputChannel[032] & 020000)
+  if(state->input_channel[032] & 020000)
   {
     state->sby_pressed       = 0;
     state->sby_still_pressed = 0;
@@ -1952,16 +1949,16 @@ int agc_engine(agc_state_t* state)
     // the clock dividers in the Scaler module, and so don't take CPU
     // time to 'increment'
     state->scale_counter -= SCALER_OVERFLOW;
-    state->inputChannel[ChanSCALER1]++;
-    if(state->inputChannel[ChanSCALER1] == 040000)
+    state->input_channel[ChanSCALER1]++;
+    if(state->input_channel[ChanSCALER1] == 040000)
     {
-      state->inputChannel[ChanSCALER1] = 0;
-      state->inputChannel[ChanSCALER2] =
-        (state->inputChannel[ChanSCALER2] + 1) & 037777;
+      state->input_channel[ChanSCALER1] = 0;
+      state->input_channel[ChanSCALER2] =
+        (state->input_channel[ChanSCALER2] + 1) & 037777;
     }
 
     // Check alarms first, since there's a chance we might go to standby
-    if(04000 == (07777 & state->inputChannel[ChanSCALER1]))
+    if(04000 == (07777 & state->input_channel[ChanSCALER1]))
     {
       // The Night Watchman begins looking once every 1.28s
       if(!state->standby)
@@ -1971,7 +1968,7 @@ int agc_engine(agc_state_t* state)
       // (it has the same period as but is 180 degrees out of phase with the Night Watchman)
       if(
         state->sby_pressed
-        && ((state->inputChannel[013] & 002000) || state->standby))
+        && ((state->input_channel[013] & 002000) || state->standby))
       {
         if(!state->standby)
         {
@@ -1999,10 +1996,10 @@ int agc_engine(agc_state_t* state)
         }
       }
     }
-    else if(00000 == (07777 & state->inputChannel[ChanSCALER1]))
+    else if(00000 == (07777 & state->input_channel[ChanSCALER1]))
     {
       // The standby circuit checks the SBY/PRO button state every 1.28s
-      if(0 == (state->inputChannel[032] & 020000))
+      if(0 == (state->input_channel[032] & 020000))
         state->sby_pressed = 1;
 
       // The Night Watchman finishes looking now
@@ -2016,7 +2013,7 @@ int agc_engine(agc_state_t* state)
         // Set the NIGHT WATCHMAN bit in channel 77. Don't go through CpuWriteIO() because
         // instructions writing to CH77 clear it. We'll broadcast changes to it in the
         // generic alarm handler a bit further down.
-        state->inputChannel[077] |= CH77_NIGHT_WATCHMAN;
+        state->input_channel[077] |= CH77_NIGHT_WATCHMAN;
         state->night_watchman_tripped = 1;
       }
       else
@@ -2024,15 +2021,15 @@ int agc_engine(agc_state_t* state)
         // channel 77 bit
         state->night_watchman_tripped = 0;
     }
-    else if(00 == (07 & state->inputChannel[ChanSCALER1]))
+    else if(00 == (07 & state->input_channel[ChanSCALER1]))
     {
       // Update the warning filter. Once every 160ms, if an input to the filter has been
       // generated (or if the light test is active), the filter is charged. Otherwise,
       // it slowly discharges. This is being modeled as a simple linear function right now,
       // and should be updated when we learn its real implementation details.
       if(
-        (0400 == (0777 & state->inputChannel[ChanSCALER1]))
-        && (state->generated_warning || (state->inputChannel[013] & 01000)))
+        (0400 == (0777 & state->input_channel[ChanSCALER1]))
+        && (state->generated_warning || (state->input_channel[013] & 01000)))
       {
         state->generated_warning = 0;
         state->warning_filter += WARNING_FILTER_INCREMENT;
@@ -2051,7 +2048,7 @@ int agc_engine(agc_state_t* state)
     // All the rest of this is switched off during standby.
     if(!state->standby)
     {
-      if(0400 == (0777 & state->inputChannel[ChanSCALER1]))
+      if(0400 == (0777 & state->input_channel[ChanSCALER1]))
       {
         // The Rupt Lock alarm watches ISR state starting every 160ms
         state->rupt_lock = 1;
@@ -2059,7 +2056,7 @@ int agc_engine(agc_state_t* state)
       }
       else if(
         (state->rupt_lock || state->no_rupt)
-        && 0300 == (0777 & state->inputChannel[ChanSCALER1]))
+        && 0300 == (0777 & state->input_channel[ChanSCALER1]))
       {
         // We've either had no interrupts, or stuck in one, for 140ms. Sound the alarm!
         if(ShowAlarms && state->rupt_lock)
@@ -2069,16 +2066,16 @@ int agc_engine(agc_state_t* state)
         TriggeredAlarm = 1;
 
         // Set the RUPT LOCK bit in channel 77.
-        state->inputChannel[077] |= CH77_RUPT_LOCK;
+        state->input_channel[077] |= CH77_RUPT_LOCK;
       }
 
-      if(020 == (037 & state->inputChannel[ChanSCALER1]))
+      if(020 == (037 & state->input_channel[ChanSCALER1]))
       {
         // The TC Trap alarm watches executing instructions every 5ms
         state->tc_trap = 1;
         state->no_tc   = 1;
       }
-      else if((state->tc_trap || state->no_tc) && 000 == (037 & state->inputChannel[ChanSCALER1]))
+      else if((state->tc_trap || state->no_tc) && 000 == (037 & state->input_channel[ChanSCALER1]))
       {
         // We've either executed no TC at all, or only TCs, for the past 5ms. Sound the alarm!
         if(ShowAlarms && state->tc_trap)
@@ -2088,7 +2085,7 @@ int agc_engine(agc_state_t* state)
         TriggeredAlarm = 1;
 
         // Set the TC TRAP bit in channel 77.
-        state->inputChannel[077] |= CH77_TC_TRAP;
+        state->input_channel[077] |= CH77_TC_TRAP;
       }
 
       // Now that that's taken care of...
@@ -2100,7 +2097,7 @@ int agc_engine(agc_state_t* state)
       // would be saved and the counts would happen immediately
       // after the first instruction at 4000, so doing them now
       // is not too inaccurate.
-      if(020 == (037 & state->inputChannel[ChanSCALER1]))
+      if(020 == (037 & state->input_channel[ChanSCALER1]))
       {
         state->extra_delay++;
         if(counter_pinc(&c(RegTIME1)))
@@ -2113,7 +2110,7 @@ int agc_engine(agc_state_t* state)
           state->interrupt_requests[3] = 1;
       }
       // TIME5 is the same as TIME3, but 5 ms. out of phase.
-      if(000 == (037 & state->inputChannel[ChanSCALER1]))
+      if(000 == (037 & state->input_channel[ChanSCALER1]))
       {
         state->extra_delay++;
         if(counter_pinc(&c(RegTIME5)))
@@ -2121,11 +2118,11 @@ int agc_engine(agc_state_t* state)
 
         // Synchronously with TIME5, if radar activity is enabled,
         // increment the radar gate counter.
-        if(state->inputChannel[013] & 010)
+        if(state->input_channel[013] & 010)
           state->radar_gate_counter++;
       }
       // TIME4 is the same as TIME3, but 7.5ms out of phase
-      if(010 == (037 & state->inputChannel[ChanSCALER1]))
+      if(010 == (037 & state->input_channel[ChanSCALER1]))
       {
         state->extra_delay++;
         if(counter_pinc(&c(RegTIME4)))
@@ -2133,32 +2130,32 @@ int agc_engine(agc_state_t* state)
       }
       // TIME6 only increments when it has been enabled via CH13 bit 15.
       // It increments 0.3125ms after TIME1/TIME3
-      if(040000 & state->inputChannel[013] && (state->inputChannel[ChanSCALER1] & 01) == 01)
+      if(040000 & state->input_channel[013] && (state->input_channel[ChanSCALER1] & 01) == 01)
       {
         state->extra_delay++;
         if(counter_dinc(state, 0, &c(RegTIME6)))
         {
           state->interrupt_requests[1] = 1;
           // Triggering a T6RUPT disables T6 by clearing the CH13 bit
-          cpu_write_io(state, 013, state->inputChannel[013] & 037777);
+          cpu_write_io(state, 013, state->input_channel[013] & 037777);
         }
       }
 
       // Check for HANDRUPT conditions (the actually timing is very slightly off
       // from this, but not enough to matter). The traps are reset upon triggering.
-      if(state->trap_31a && ((state->inputChannel[031] & 000077) != 000077))
+      if(state->trap_31a && ((state->input_channel[031] & 000077) != 000077))
       {
         state->trap_31a               = 0;
         state->interrupt_requests[10] = 1;
       }
 
-      if(state->trap_31b && ((state->inputChannel[031] & 007700) != 007700))
+      if(state->trap_31b && ((state->input_channel[031] & 007700) != 007700))
       {
         state->trap_31b               = 0;
         state->interrupt_requests[10] = 1;
       }
 
-      if(state->trap_32 && ((state->inputChannel[032] & 001777) != 001777))
+      if(state->trap_32 && ((state->input_channel[032] & 001777) != 001777))
       {
         state->trap_32                = 0;
         state->interrupt_requests[10] = 1;
@@ -2167,7 +2164,7 @@ int agc_engine(agc_state_t* state)
       // Similarly, check for radar cycle completion. As with HANDRUPT, the
       // timing here is slightly off (early by ~13 MCT), but this should
       // not be enough to matter.
-      if((state->radar_gate_counter == 9) && (036 == (037 & state->inputChannel[ChanSCALER1])))
+      if((state->radar_gate_counter == 9) && (036 == (037 & state->input_channel[ChanSCALER1])))
       {
         // Completion of a radar cycle triggers the following actions:
         // 1. The radar gate counter is set back to 0.
@@ -2176,7 +2173,7 @@ int agc_engine(agc_state_t* state)
         //    (this is expected to be performed by RequestRadarData().
         // 4. RADARUPT is set pending.
         state->radar_gate_counter = 0;
-        state->inputChannel[013] &= ~010;
+        state->input_channel[013] &= ~010;
         request_radar_data(state);
         state->interrupt_requests[9] = 1; // RADARUPT
       }
@@ -2220,7 +2217,7 @@ int agc_engine(agc_state_t* state)
         cpu_write_io(state, 014, 0);
 
         // Clear the UPLINK TOO FAST bit (11) in channel 33
-        state->inputChannel[033] |= 002000;
+        state->input_channel[033] |= 002000;
 
         // Clear channels 34 and 35, and don't let doing so generate a downrupt
         cpu_write_io(state, 034, 0);
@@ -2245,7 +2242,7 @@ int agc_engine(agc_state_t* state)
       }
 
       // Push the CH77 updates to the outside world
-      agc_channel_output(state, 077, state->inputChannel[077]);
+      agc_channel_output(state, 077, state->input_channel[077]);
     }
 
     if(state->extra_delay)
@@ -2275,18 +2272,18 @@ int agc_engine(agc_state_t* state)
     GyroTimer -= GYRO_OVERFLOW;
     // We get to this point 3200 times per second.  We increment the
     // pulse count only if the GYRO ACTIVITY bit in channel 014 is set.
-    if(0 != (state->inputChannel[014] & 01000) && state->erasable[0][RegGYROCTR] > 0)
+    if(0 != (state->input_channel[014] & 01000) && state->erasable[0][RegGYROCTR] > 0)
     {
       GyroCount++;
       state->erasable[0][RegGYROCTR]--;
       if(state->erasable[0][RegGYROCTR] == 0)
-        state->inputChannel[014] &= ~01000;
+        state->input_channel[014] &= ~01000;
     }
   }
 
   // If 1/4 second (nominal gyro pulse count of 800 decimal) or the gyro
   // bits in channel 014 have changed, output to channel 0177.
-  i = (state->inputChannel[014] & 01740); // Pick off the gyro bits.
+  i = (state->input_channel[014] & 01740); // Pick off the gyro bits.
   if(i != OldChannel14 || GyroCount >= 800)
   {
     j            = ((OldChannel14 & 0740) << 6) | GyroCount;
@@ -2297,14 +2294,14 @@ int agc_engine(agc_state_t* state)
 #else // GYRO_TIMING_SIMULATED
 #define GYRO_BURST 800
 #define GYRO_BURST2 1024
-  if(0 != (state->inputChannel[014] & 01000))
+  if(0 != (state->input_channel[014] & 01000))
     if(0 != state->erasable[0][RegGYROCTR])
     {
       // If any torquing is still pending, do it all at once before
       // setting up a new torque counter.
       while(GyroCount)
       {
-        j = GyroCount;
+        int j = GyroCount;
         if(j > 03777)
           j = 03777;
         agc_channel_output(state, 0177, OldChannel14 | j);
@@ -2313,7 +2310,7 @@ int agc_engine(agc_state_t* state)
       // Set up new torque counter.
       GyroCount                      = state->erasable[0][RegGYROCTR];
       state->erasable[0][RegGYROCTR] = 0;
-      OldChannel14 = ((state->inputChannel[014] & 0740) << 6);
+      OldChannel14 = ((state->input_channel[014] & 0740) << 6);
       GyroTimer    = GYRO_OVERFLOW * GYRO_BURST - GYRO_DIVIDER;
     }
   // Update the 3200 pps gyro pulse counter.
@@ -2323,7 +2320,7 @@ int agc_engine(agc_state_t* state)
     GyroTimer -= GYRO_BURST * GYRO_OVERFLOW;
     if(GyroCount)
     {
-      j = GyroCount;
+      int j = GyroCount;
       if(j > GYRO_BURST2)
         j = GYRO_BURST2;
       agc_channel_output(state, 0177, OldChannel14 | j);
@@ -2337,7 +2334,7 @@ int agc_engine(agc_state_t* state)
   // coarse alignment.
 
 #if 0
-  i = (state->inputChannel[014] & 070000);	// Check IMU CDU drive bits.
+  i = (state->input_channel[014] & 070000);	// Check IMU CDU drive bits.
   if (ImuChannel14 == 0 && i != 0)// If suddenly active, start drive.
   ImuCduCount = IMUCDU_BURST_CYCLES;
   if (i != 0 && ImuCduCount >= IMUCDU_BURST_CYCLES)// Time for next burst.
@@ -2352,7 +2349,7 @@ int agc_engine(agc_state_t* state)
   else
   ImuCduCount++;
 #else  // 0
-  i = (state->inputChannel[014] & 070000); // Check IMU CDU drive bits.
+  int i = (state->input_channel[014] & 070000); // Check IMU CDU drive bits.
   if(ImuChannel14 == 0 && i != 0) // If suddenly active, start drive.
     ImuCduCount = state->cycle_counter - IMUCDU_BURST_CYCLES;
   if(i != 0 && (state->cycle_counter - ImuCduCount) >= IMUCDU_BURST_CYCLES) // Time for next burst.
@@ -2372,12 +2369,12 @@ int agc_engine(agc_state_t* state)
   // Just grab the data from the counter and dump it out the appropriate
   // fictitious port as a giant lump.
 
-  if(state->erasable[0][RegOPTX] && 0 != (state->inputChannel[014] & 02000))
+  if(state->erasable[0][RegOPTX] && 0 != (state->input_channel[014] & 02000))
   {
     agc_channel_output(state, 0172, state->erasable[0][RegOPTX]);
     state->erasable[0][RegOPTX] = 0;
   }
-  if(state->erasable[0][RegOPTY] && 0 != (state->inputChannel[014] & 04000))
+  if(state->erasable[0][RegOPTY] && 0 != (state->input_channel[014] & 04000))
   {
     agc_channel_output(state, 0171, state->erasable[0][RegOPTY]);
     state->erasable[0][RegOPTY] = 0;
@@ -2401,7 +2398,7 @@ int agc_engine(agc_state_t* state)
   // bits long, but its value is transferred to the 12-bit S regsiter for
   // addressing, so the upper bits are lost.
   pc = c(RegZ) & 07777;
-  where_word      = FindMemoryWord(state, pc);
+  where_word      = find_memory_word(state, pc);
 
   // Fetch the instruction itself.
   //Instruction = *WhereWord;
@@ -2435,8 +2432,7 @@ int agc_engine(agc_state_t* state)
      && inst != 3 && inst != 4 && inst != 6)
     || ext_ppcode == 0107) // Always check if the instruction is EDRUPT.
   {
-    int i;
-    int InterruptRequested = 0;
+    int interrupt_requested = 0;
     // Interrupt vectors are ordered by their priority, with the lowest
     // address corresponding to the highest priority interrupt. Thus,
     // we can simply search through them in order for the next pending
@@ -2453,20 +2449,20 @@ int agc_engine(agc_state_t* state)
 
         state->next_z = 04000 + 4 * i;
 
-        InterruptRequested = 1;
+        interrupt_requested = 1;
         break;
       }
     }
 
     // If no pending interrupts and we're dealing with EDRUPT, fall
     // back to address 0 (A) as the interrupt vector
-    if(!InterruptRequested && ext_ppcode == 0107)
+    if(!interrupt_requested && ext_ppcode == 0107)
     {
       state->next_z      = 0;
-      InterruptRequested = 1;
+      interrupt_requested = 1;
     }
 
-    if(InterruptRequested)
+    if(interrupt_requested)
     {
       // Set up the return stuff.
       c(RegZRUPT) = pc + 1;
@@ -2586,7 +2582,7 @@ int agc_engine(agc_state_t* state)
       }
       else // K!=accumulator.
       {
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         pperand_16 = *where_word & 077777;
         // Compute the "diminished absolute value", and save in accumulator.
         c(RegA) = dabs(pperand_16);
@@ -2645,7 +2641,7 @@ int agc_engine(agc_state_t* state)
           c(RegL) = 0177777 & sign_extend(Lsw);
           break;
         }
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         if(address_10 < REG16)
           Lsw = add_sp_16(0177777 & c(RegL), 0177777 & c(address_10));
         else
@@ -2700,7 +2696,7 @@ int agc_engine(agc_state_t* state)
       }
       else
       {
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         pperand_16 = *where_word;
         assign_from_pointer(
           state, where_word, overflow_corrected(0177777 & c(RegL)));
@@ -2712,7 +2708,7 @@ int agc_engine(agc_state_t* state)
       // INCR instruction (2 MCT).
       {
         int Sum;
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         if(address_10 < REG16)
           c(address_10) = add_sp_16(AGC_P1, 0177777 & c(address_10));
         else
@@ -2727,7 +2723,7 @@ int agc_engine(agc_state_t* state)
     case 027:
       // ADS instruction (2 MCT).
       {
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         if(IsA(address_10))
           acc = add_sp_16(acc, acc);
         else if(address_10 < REG16)
@@ -2760,7 +2756,7 @@ int agc_engine(agc_state_t* state)
         ;
         break;
       }
-      where_word = FindMemoryWord(state, address_12);
+      where_word = find_memory_word(state, address_12);
       c(RegA)   = sign_extend(*where_word);
       assign_from_pointer(state, where_word, *where_word);
       break;
@@ -2785,7 +2781,7 @@ int agc_engine(agc_state_t* state)
         c(RegA) = ~c(address_12);
         break;
       }
-      where_word = FindMemoryWord(state, address_12);
+      where_word = find_memory_word(state, address_12);
       c(RegA)   = sign_extend(neg_sp(*where_word));
       assign_from_pointer(state, where_word, *where_word);
       break;
@@ -2797,7 +2793,7 @@ int agc_engine(agc_state_t* state)
         state->index_value = overflow_corrected(c(address_10));
       else
       {
-        where_word          = FindMemoryWord(state, address_10);
+        where_word          = find_memory_word(state, address_10);
         state->index_value = *where_word;
       }
       break;
@@ -2822,7 +2818,7 @@ int agc_engine(agc_state_t* state)
           state->index_value = overflow_corrected(c(address_12));
         else
         {
-          where_word          = FindMemoryWord(state, address_12);
+          where_word          = find_memory_word(state, address_12);
           state->index_value = *where_word;
         }
         KeepExtraCode = 1;
@@ -2838,7 +2834,7 @@ int agc_engine(agc_state_t* state)
         c(RegL) = sign_extend(overflow_corrected(c(RegL)));
         break;
       }
-      where_word = FindMemoryWord(state, address_10);
+      where_word = find_memory_word(state, address_10);
       // Topmost word.
       if(address_10 < REG16)
       {
@@ -2887,7 +2883,7 @@ int agc_engine(agc_state_t* state)
       }
       else // Not OVSK or TCAA.
       {
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         if(address_10 < REG16)
           c(address_10) = acc;
         else
@@ -2912,7 +2908,7 @@ int agc_engine(agc_state_t* state)
           state->next_z = c(RegZ);
         break;
       }
-      where_word = FindMemoryWord(state, address_10);
+      where_word = find_memory_word(state, address_10);
       c(RegA)   = sign_extend(*where_word);
       assign_from_pointer(state, where_word, overflow_corrected(acc));
       break;
@@ -2930,7 +2926,7 @@ int agc_engine(agc_state_t* state)
         acc = add_sp_16(acc, 0177777 & c(address_12));
       else
       {
-        where_word   = FindMemoryWord(state, address_12);
+        where_word   = find_memory_word(state, address_12);
         acc = add_sp_16(acc, sign_extend(*where_word));
         assign_from_pointer(state, where_word, *where_word);
       }
@@ -2949,7 +2945,7 @@ int agc_engine(agc_state_t* state)
       else
       {
         c(RegA)   = overflow_corrected(acc);
-        where_word = FindMemoryWord(state, address_12);
+        where_word = find_memory_word(state, address_12);
         c(RegA)   = sign_extend(c(RegA) & *where_word);
       }
       break;
@@ -3066,7 +3062,7 @@ int agc_engine(agc_state_t* state)
       else if(address_10 < REG16)
         Div16 = c(address_10);
       else
-        Div16 = sign_extend(*FindMemoryWord(state, address_10));
+        Div16 = sign_extend(*find_memory_word(state, address_10));
 
       // Fetch the values;
       AbsK = abs_sp(overflow_corrected(Div16));
@@ -3076,7 +3072,7 @@ int agc_engine(agc_state_t* state)
         // overflow. In both cases, we fall back on a slower simulation
         // of the hardware registers, which will produce "total nonsense"
         // (that nonetheless will match what the actual AGC would have gotten).
-        SimulateDV(state, Div16);
+        simulate_dv(state, Div16);
       }
       else if(AbsA == 0 && AbsL == 0)
       {
@@ -3160,7 +3156,7 @@ int agc_engine(agc_state_t* state)
     {
       unsigned ui, uj;
       int      diff;
-      where_word = FindMemoryWord(state, address_10);
+      where_word = find_memory_word(state, address_10);
       if(address_10 < REG16)
       {
         ui = 0177777 & acc;
@@ -3206,7 +3202,7 @@ int agc_engine(agc_state_t* state)
       }
       else
       {
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         pperand_16 = overflow_corrected(c(RegQ));
         c(RegQ)   = sign_extend(*where_word);
         assign_from_pointer(state, where_word, pperand_16);
@@ -3217,7 +3213,7 @@ int agc_engine(agc_state_t* state)
     {
       int Sum;
       int Operand16, Increment;
-      where_word = FindMemoryWord(state, address_10);
+      where_word = find_memory_word(state, address_10);
       if(address_10 < REG16)
         Operand16 = c(address_10);
       else
@@ -3242,7 +3238,7 @@ int agc_engine(agc_state_t* state)
     {
       int Sum;
       int Operand16, Increment;
-      where_word = FindMemoryWord(state, address_10);
+      where_word = find_memory_word(state, address_10);
       if(address_10 < REG16)
         Operand16 = c(address_10);
       else
@@ -3274,7 +3270,7 @@ int agc_engine(agc_state_t* state)
         c(RegL) = sign_extend(overflow_corrected(c(RegL)));
         break;
       }
-      where_word = FindMemoryWord(state, address_12);
+      where_word = find_memory_word(state, address_12);
       // Do topmost word first.
       if(address_12 < REG16)
         c(RegL) = c(address_12);
@@ -3306,7 +3302,7 @@ int agc_engine(agc_state_t* state)
         c(RegL) = sign_extend(overflow_corrected(c(RegL)));
         break;
       }
-      where_word = FindMemoryWord(state, address_12);
+      where_word = find_memory_word(state, address_12);
       // Do topmost word first.
       if(address_12 < REG16)
         c(RegL) = ~c(address_12);
@@ -3332,7 +3328,7 @@ int agc_engine(agc_state_t* state)
         acc = add_sp_16(acc, 0177777 & ~c(address_10));
       else
       {
-        where_word = FindMemoryWord(state, address_10);
+        where_word = find_memory_word(state, address_10);
         acc =
           add_sp_16(acc, sign_extend(neg_sp(*where_word)));
         assign_from_pointer(state, where_word, *where_word);
@@ -3367,39 +3363,39 @@ int agc_engine(agc_state_t* state)
       // what it would mean to carry out the operation otherwise.
       // Fix later if it causes a problem.
       // FIX ME: Accumulator is overflow-corrected before SQUARE.
-      int16_t MsWord, LsWord, OtherOperand16;
-      int     Product;
-      where_word = FindMemoryWord(state, address_12);
+      int16_t ms_word, ls_word, other_op_16;
+      int     prod;
+      where_word = find_memory_word(state, address_12);
       pperand_16 = overflow_corrected(acc);
       if(address_12 < REG16)
-        OtherOperand16 = overflow_corrected(c(address_12));
+        other_op_16 = overflow_corrected(c(address_12));
       else
-        OtherOperand16 = *where_word;
-      if(OtherOperand16 == AGC_P0 || OtherOperand16 == AGC_M0)
-        MsWord = LsWord = AGC_P0;
+        other_op_16 = *where_word;
+      if(other_op_16 == AGC_P0 || other_op_16 == AGC_M0)
+        ms_word = ls_word = AGC_P0;
       else if(pperand_16 == AGC_P0 || pperand_16 == AGC_M0)
       {
-        if((pperand_16 == AGC_P0 && 0 != (040000 & OtherOperand16)) || (pperand_16 == AGC_M0 && 0 == (040000 & OtherOperand16)))
-          MsWord = LsWord = AGC_M0;
+        if((pperand_16 == AGC_P0 && 0 != (040000 & other_op_16)) || (pperand_16 == AGC_M0 && 0 == (040000 & other_op_16)))
+          ms_word = ls_word = AGC_M0;
         else
-          MsWord = LsWord = AGC_P0;
+          ms_word = ls_word = AGC_P0;
       }
       else
       {
         int16_t WordPair[2];
-        Product = agc2cpu(sign_extend(pperand_16))
-          * agc2cpu(sign_extend(OtherOperand16));
-        Product = cpu2agc2(Product);
+        prod = agc2cpu(sign_extend(pperand_16))
+          * agc2cpu(sign_extend(other_op_16));
+        prod = cpu2agc2(prod);
         // Sign-extend, because it's needed for DecentToSp.
-        if(02000000000 & Product)
-          Product |= 004000000000;
+        if(02000000000 & prod)
+          prod |= 004000000000;
         // Convert back to DP.
-        decent_to_sp(Product, &WordPair[1]);
-        MsWord = WordPair[0];
-        LsWord = WordPair[1];
+        decent_to_sp(prod, &WordPair[1]);
+        ms_word = WordPair[0];
+        ls_word = WordPair[1];
       }
-      c(RegA) = sign_extend(MsWord);
-      c(RegL) = sign_extend(LsWord);
+      c(RegA) = sign_extend(ms_word);
+      c(RegL) = sign_extend(ls_word);
     }
     break;
     default:
@@ -3413,7 +3409,7 @@ AllDone:
   if(!state->pend_flag)
   {
     c(RegZERO)             = AGC_P0;
-    state->inputChannel[7] = state->output_channel_7 &= 0160;
+    state->input_channel[7] = state->output_channel_7 &= 0160;
     c(RegZ)                = state->next_z;
     // In all cases except for RESUME, Z will be truncated to
     // 12 bits between instructions

@@ -77,12 +77,12 @@ int main(int argc, char* argv[])
   set_conio_terminal_mode();
 
   /* Declare Options and parse the command line */
-  opt_t* Options = CliParseArguments(argc, argv);
+  opt_t* opt = CliParseArguments(argc, argv);
 
   /* Initialize the Simulator and debugger if enabled
 	 * if the initialization fails or Options is NULL then the simulator will
 	 * return a non zero value and subsequently bail and exit the program */
-  if(sim_init(Options) == SIM_E_OK)
+  if(sim_init(opt) == SIM_E_OK)
     sim_exec();
 
   return (0);

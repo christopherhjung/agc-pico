@@ -81,7 +81,7 @@ void agc_channel_output(agc_state_t* State, int channel, int value)
   // account for those separately.
   if(channel == 7)
   {
-    State->inputChannel[7] = State->output_channel_7 = (value & 0160);
+    State->input_channel[7] = State->output_channel_7 = (value & 0160);
     return;
   }
 
