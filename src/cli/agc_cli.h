@@ -38,13 +38,10 @@
  *              05/30/17 RSB	Added --initialize-sunburst-37 option
  */
 
-
 #pragma once
 
 #define CLI_E_OK 0
 #define CLI_E_UNKOWNTOKEN 1
 #include "core/agc_simulator.h"
 
-
-extern opt_t* CliParseArguments(int argc, char *argv[]);
-
+extern opt_t* CliParseArguments(int argc, char* argv[]);

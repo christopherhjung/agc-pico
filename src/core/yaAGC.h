@@ -54,5 +54,3 @@
 
 #define FORMAT_64U "%llu"
 #define FORMAT_64O "%llo"
-
-

@@ -29,12 +29,14 @@
 
 #define RINGBUFFER_ELEMENT_SIZE 4
 #define RINGBUFFER_ELEMENTS 1024
-#define RINGBUFFER_CAPACITY RINGBUFFER_ELEMENTS * RINGBUFFER_ELEMENT_SIZE
+#define RINGBUFFER_CAPACITY \
+  RINGBUFFER_ELEMENTS* RINGBUFFER_ELEMENT_SIZE
 
-typedef struct {
+typedef struct
+{
   unsigned char data[RINGBUFFER_CAPACITY];
-  int tail;
-  int head;
+  int           tail;
+  int           head;
 } ringbuffer;
 
 typedef struct
@@ -46,6 +48,6 @@ typedef struct
 extern ringbuffer ringbuffer_in;
 extern ringbuffer ringbuffer_out;
 
-void ringbuffer_init (ringbuffer *buf);
-int ringbuffer_put (ringbuffer* buf, unsigned char* Packet);
-int ringbuffer_get (ringbuffer* buf, unsigned char* Packet);
+void ringbuffer_init(ringbuffer* buf);
+int  ringbuffer_put(ringbuffer* buf, unsigned char* Packet);
+int  ringbuffer_get(ringbuffer* buf, unsigned char* Packet);

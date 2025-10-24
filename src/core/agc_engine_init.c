@@ -101,13 +101,13 @@
 
 #include <stdio.h>
 #include <string.h>
+
 #include "agc_engine.h"
 #include "yaAGC.h"
 
 int initializeSunburst37 = 0;
 
-FILE *
-rfopen (const char *Filename, const char *mode);
+FILE* rfopen(const char* Filename, const char* mode);
 
 //---------------------------------------------------------------------------
 // Returns:
@@ -118,133 +118,131 @@ rfopen (const char *Filename, const char *mode);
 //      4 -- agc_t structure not allocated.
 //      5 -- File-read error.
 //      6 -- Core-dump file not found.
-// Normally, on input the CoreDump filename is NULL, in which case all of the 
+// Normally, on input the CoreDump filename is NULL, in which case all of the
 // i/o channels, erasable memory, etc., are cleared to their reset values.
 // When the CoreDump is loaded instead, it allows execution to continue precisely
 // from the point at which the CoreDump was created, if AllOrErasable != 0.
 // If AllOrErasable == 0, then only the erasable memory is initialized from the
 // core-dump file.
 
-int
-agc_load_binfile (agc_state_t *State, const char *RomImage)
+int agc_load_binfile(agc_state_t* State, const char* RomImage)
 
 {
-  FILE *fp = NULL;
-  int Bank;
-  int m, n, i, j;
-  int RetVal = 0;
+  FILE* fp = NULL;
+  int   Bank;
+  int   m, n, i, j;
+  int   RetVal = 0;
 
   // The following sequence of steps loads the ROM image into the simulated
   // core memory, in what I think is a pretty obvious way.
 
-  fp = rfopen (RomImage, "rb");
-  if (fp == NULL)
+  fp = rfopen(RomImage, "rb");
+  if(fp == NULL)
+  {
+    RetVal = 1;
+    goto Done;
+  }
+
+  fseek(fp, 0, SEEK_END);
+  n = ftell(fp);
+  if(0 != (n & 1))
+  { // Must be an integral number of words.
+    RetVal = 3;
+    goto Done;
+  }
+
+  n /= 2; // Convert byte-count to word-count.
+  if(n > 36 * 02000)
+  {
+    RetVal = 2;
+    goto Done;
+  }
+
+  fseek(fp, 0, SEEK_SET);
+  if(State == NULL)
+  {
+    RetVal = 4;
+    goto Done;
+  }
+
+  State->check_parity = 0;
+  memset(&State->parities, 0, sizeof(State->parities));
+
+  Bank = 2;
+  for(Bank = 2, j = 0, i = 0; i < n; i++)
+  {
+    unsigned char In[2];
+    uint8_t       Parity;
+    uint16_t      RawValue;
+    m = fread(In, 1, 2, fp);
+    if(m != 2)
     {
-      RetVal = 1;
+      RetVal = 5;
       goto Done;
     }
-
-  fseek (fp, 0, SEEK_END);
-  n = ftell (fp);
-  if (0 != (n & 1))
-    {		// Must be an integral number of words.
-      RetVal = 3;
-      goto Done;
-    }
-
-  n /= 2;			// Convert byte-count to word-count.
-  if (n > 36 * 02000)
+    // Within the input file, the fixed-memory banks are arranged in the order
+    // 2, 3, 0, 1, 4, 5, 6, 7, ..., 35.  Therefore, we have to take a little care
+    // reordering the banks.
+    if(Bank > 35)
     {
       RetVal = 2;
       goto Done;
     }
+    RawValue = (In[0] * 256 + In[1]);
+    Parity   = RawValue & 1;
 
-  fseek (fp, 0, SEEK_SET);
-  if (State == NULL)
+    State->fixed[Bank][j] = RawValue >> 1;
+    State->parities[(Bank * 02000 + j) / 32] |= Parity << (j % 32);
+    j++;
+
+    // If any of the parity bits are actually set, this must be a ROM built with
+    // --hardware. Enable parity checking.
+    if(Parity)
+      State->check_parity = 1;
+
+    if(j == 02000)
     {
-      RetVal = 4;
-      goto Done;
+      j = 0;
+      // Bank filled.  Advance to next fixed-memory bank.
+      if(Bank == 2)
+        Bank = 3;
+      else if(Bank == 3)
+        Bank = 0;
+      else if(Bank == 0)
+        Bank = 1;
+      else if(Bank == 1)
+        Bank = 4;
+      else
+        Bank++;
     }
+  }
 
-  State->check_parity = 0;
-  memset (&State->parities, 0, sizeof(State->parities));
-
-  Bank = 2;
-  for (Bank = 2, j = 0, i = 0; i < n; i++)
-    {
-      unsigned char In[2];
-      uint8_t Parity;
-      uint16_t RawValue;
-      m = fread (In, 1, 2, fp);
-      if (m != 2)
-	{
-	  RetVal = 5;
-	  goto Done;
-	}
-      // Within the input file, the fixed-memory banks are arranged in the order
-      // 2, 3, 0, 1, 4, 5, 6, 7, ..., 35.  Therefore, we have to take a little care
-      // reordering the banks.
-      if (Bank > 35)
-	{
-	  RetVal = 2;
-	  goto Done;
-	}
-      RawValue = (In[0] * 256 + In[1]);
-      Parity = RawValue & 1;
-
-      State->fixed[Bank][j] = RawValue >> 1;
-      State->parities[(Bank * 02000 + j) / 32] |= Parity << (j % 32);
-      j++;
-
-      // If any of the parity bits are actually set, this must be a ROM built with
-      // --hardware. Enable parity checking.
-      if (Parity)
-	State->check_parity = 1;
-
-      if (j == 02000)
-	{
-	  j = 0;
-	  // Bank filled.  Advance to next fixed-memory bank.
-	  if (Bank == 2)
-	    Bank = 3;
-	  else if (Bank == 3)
-	    Bank = 0;
-	  else if (Bank == 0)
-	    Bank = 1;
-	  else if (Bank == 1)
-	    Bank = 4;
-	  else
-	    Bank++;
-	}
-    }
-
-  Done: if (fp != NULL)
-    fclose (fp);
+Done:
+  if(fp != NULL)
+    fclose(fp);
   return (RetVal);
 }
 
-int
-agc_engine_init (agc_state_t * state, const char *rom_image, const char *core_dump,
-		 int all_or_erasable)
+int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_dump, int all_or_erasable)
 {
-#if defined (WIN32) || defined (__APPLE__)  
+#if defined(WIN32) || defined(__APPLE__)
   uint64_t lli;
 #else
   unsigned long long lli;
-#endif  
-  int ret = 0, i, j, Bank;
-  FILE *cd = NULL;
+#endif
+  int   ret = 0, i, j, Bank;
+  FILE* cd  = NULL;
 
   // Fix for Issue #29 Return the values as the API documents
-  if (rom_image)
-    {
-      ret = agc_load_binfile (state, rom_image);
-      if (ret > 0)
-	goto Done;
-    }
+  if(rom_image)
+  {
+    ret = agc_load_binfile(state, rom_image);
+    if(ret > 0)
+      goto Done;
+  }
 
   // Clear i/o channels.
-  for (i = 0; i < NUM_CHANNELS; i++)
+  for(i = 0; i < NUM_CHANNELS; i++)
     state->inputChannel[i] = 0;
   state->inputChannel[030] = 037777;
   state->inputChannel[031] = 077777;
@@ -252,179 +250,180 @@ agc_engine_init (agc_state_t * state, const char *rom_image, const char *core_du
   state->inputChannel[033] = 077777;
 
   // Clear erasable memory.
-  for (Bank = 0; Bank < 8; Bank++)
-    for (j = 0; j < 0400; j++)
+  for(Bank = 0; Bank < 8; Bank++)
+    for(j = 0; j < 0400; j++)
       state->Erasable[Bank][j] = 0;
-  state->Erasable[0][RegZ] = 04000;	// Initial program counter.
+  state->Erasable[0][RegZ] = 04000; // Initial program counter.
 
   // Set up the CPU state variables that aren't part of normal memory.
-  state->cycle_counter = 0;
-  state->extra_code = 0;
+  state->cycle_counter   = 0;
+  state->extra_code      = 0;
   state->allow_interrupt = 1; // The GOJAM sequence enables interrupts
-  state->interrupt_requests[8] = 1;	// DOWNRUPT.
+  state->interrupt_requests[8] = 1; // DOWNRUPT.
   //State->RegA16 = 0;
-  state->pend_flag = 0;
-  state->pend_delay = 0;
+  state->pend_flag   = 0;
+  state->pend_delay  = 0;
   state->extra_delay = 0;
   //State->RegQ16 = 0;
 
   state->output_channel_7 = 0;
-  for (j = 0; j < 16; j++)
+  for(j = 0; j < 16; j++)
     state->output_channel_10[j] = 0;
   state->index_value = 0;
-  for (j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
+  for(j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
     state->interrupt_requests[j] = 0;
-  state->in_isr = 0;
+  state->in_isr                 = 0;
   state->substitute_instruction = 0;
-  state->downrupt_time_valid = 1;
-  state->downrupt_time = 0;
-  state->downlink = 0;
+  state->downrupt_time_valid    = 1;
+  state->downrupt_time          = 0;
+  state->downlink               = 0;
 
-  state->night_watchman = 0;
+  state->night_watchman         = 0;
   state->night_watchman_tripped = 0;
-  state->rupt_lock = 0;
-  state->no_rupt = 0;
-  state->tc_trap = 0;
-  state->no_tc = 0;
-  state->parity_fail = 0;
+  state->rupt_lock              = 0;
+  state->no_rupt                = 0;
+  state->tc_trap                = 0;
+  state->no_tc                  = 0;
+  state->parity_fail            = 0;
 
-  state->warning_filter = 0;
+  state->warning_filter    = 0;
   state->generated_warning = 0;
 
-  state->restart_light = 0;
-  state->standby = 0;
-  state->sby_pressed = 0;
+  state->restart_light     = 0;
+  state->standby           = 0;
+  state->sby_pressed       = 0;
   state->sby_still_pressed = 0;
 
-  state->next_z = 0;
-  state->scale_counter = 0;
+  state->next_z                = 0;
+  state->scale_counter         = 0;
   state->channel_routine_count = 0;
 
-  state->dsky_timer = 0;
-  state->dsky_flash = 0;
+  state->dsky_timer       = 0;
+  state->dsky_flash       = 0;
   state->dsky_channel_163 = 0;
 
-  state->took_bzf = 0;
+  state->took_bzf  = 0;
   state->took_bzmf = 0;
 
   state->trap_31a = 0;
   state->trap_31b = 0;
-  state->trap_32 = 0;
+  state->trap_32  = 0;
 
   state->radar_gate_counter = 0;
 
-  if (initializeSunburst37)
-    {
-      state->Erasable[0][0067] = 077777;
-      state->Erasable[0][0157] = 077777;
-      state->Erasable[0][0375] = 005605;
-      state->Erasable[0][0376] = 004003;
-    }
+  if(initializeSunburst37)
+  {
+    state->Erasable[0][0067] = 077777;
+    state->Erasable[0][0157] = 077777;
+    state->Erasable[0][0375] = 005605;
+    state->Erasable[0][0376] = 004003;
+  }
 
-  if (core_dump != NULL)
+  if(core_dump != NULL)
+  {
+    cd = fopen(core_dump, "r");
+    if(cd == NULL)
     {
-      cd = fopen (core_dump, "r");
-      if (cd == NULL)
-	{
-	  if (all_or_erasable)
-	    ret = 6;
-	  else
-	    ret = 0;
-	}
+      if(all_or_erasable)
+        ret = 6;
       else
-	{
-	  ret = 5;
-
-	  // Load up the i/o channels.
-	  for (i = 0; i < NUM_CHANNELS; i++)
-	    {
-	      if (1 != fscanf (cd, "%o", &j))
-		goto Done;
-	      if (all_or_erasable)
-		state->inputChannel[i] = j;
-	    }
-
-	  // Load up erasable memory.
-	  for (Bank = 0; Bank < 8; Bank++)
-	    for (j = 0; j < 0400; j++)
-	      {
-		if (1 != fscanf (cd, "%o", &i))
-		  goto Done;
-		if (all_or_erasable || Bank > 0 || j >= 010)
-		  state->Erasable[Bank][j] = i;
-	      }
-
-	  if (all_or_erasable)
-	    {
-	      // Set up the CPU state variables that aren't part of normal memory.
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->cycle_counter = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->extra_code = i;
-	      // I've seen no indication so far of a reset value for interrupt-enable. 
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->allow_interrupt = i;
-	      //if (1 != fscanf (cd, "%o", &i))
-	      //  goto Done;
-	      //State->RegA16 = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->pend_flag = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->pend_delay = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->extra_delay = i;
-	      //if (1 != fscanf (cd, "%o", &i))
-	      //  goto Done;
-	      //State->RegQ16 = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->output_channel_7 = i;
-	      for (j = 0; j < 16; j++)
-		{
-		  if (1 != fscanf (cd, "%o", &i))
-		    goto Done;
-		  state->output_channel_10[j] = i;
-		}
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->index_value = i;
-	      for (j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
-		{
-		  if (1 != fscanf (cd, "%o", &i))
-		    goto Done;
-		  state->interrupt_requests[j] = i;
-		}
-	      // Override the above and make DOWNRUPT always enabled at start.
-	      state->interrupt_requests[8] = 1;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->in_isr = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->substitute_instruction = i;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->downrupt_time_valid = i;
-	      if (1 != fscanf (cd, "%llo", &lli))
-		goto Done;
-	      state->downrupt_time = lli;
-	      if (1 != fscanf (cd, "%o", &i))
-		goto Done;
-	      state->downlink = i;
-	    }
-
-	  ret = 0;
-	}
+        ret = 0;
     }
+    else
+    {
+      ret = 5;
 
-  Done: if (cd != NULL)
-    fclose (cd);
+      // Load up the i/o channels.
+      for(i = 0; i < NUM_CHANNELS; i++)
+      {
+        if(1 != fscanf(cd, "%o", &j))
+          goto Done;
+        if(all_or_erasable)
+          state->inputChannel[i] = j;
+      }
+
+      // Load up erasable memory.
+      for(Bank = 0; Bank < 8; Bank++)
+        for(j = 0; j < 0400; j++)
+        {
+          if(1 != fscanf(cd, "%o", &i))
+            goto Done;
+          if(all_or_erasable || Bank > 0 || j >= 010)
+            state->Erasable[Bank][j] = i;
+        }
+
+      if(all_or_erasable)
+      {
+        // Set up the CPU state variables that aren't part of normal memory.
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->cycle_counter = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->extra_code = i;
+        // I've seen no indication so far of a reset value for interrupt-enable.
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->allow_interrupt = i;
+        //if (1 != fscanf (cd, "%o", &i))
+        //  goto Done;
+        //State->RegA16 = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->pend_flag = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->pend_delay = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->extra_delay = i;
+        //if (1 != fscanf (cd, "%o", &i))
+        //  goto Done;
+        //State->RegQ16 = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->output_channel_7 = i;
+        for(j = 0; j < 16; j++)
+        {
+          if(1 != fscanf(cd, "%o", &i))
+            goto Done;
+          state->output_channel_10[j] = i;
+        }
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->index_value = i;
+        for(j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
+        {
+          if(1 != fscanf(cd, "%o", &i))
+            goto Done;
+          state->interrupt_requests[j] = i;
+        }
+        // Override the above and make DOWNRUPT always enabled at start.
+        state->interrupt_requests[8] = 1;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->in_isr = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->substitute_instruction = i;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->downrupt_time_valid = i;
+        if(1 != fscanf(cd, "%llo", &lli))
+          goto Done;
+        state->downrupt_time = lli;
+        if(1 != fscanf(cd, "%o", &i))
+          goto Done;
+        state->downlink = i;
+      }
+
+      ret = 0;
+    }
+  }
+
+Done:
+  if(cd != NULL)
+    fclose(cd);
   return (ret);
 }
 

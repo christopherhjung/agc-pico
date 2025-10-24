@@ -26,14 +26,13 @@
 
 #include <string.h>
 
-
 ringbuffer ringbuffer_in;
 ringbuffer ringbuffer_out;
 
 /*
  * Initialize the ringbuffer; make it empty.
  */
-void ringbuffer_init (ringbuffer* buf)
+void ringbuffer_init(ringbuffer* buf)
 {
   buf->tail = buf->head = 0;
 }
@@ -41,32 +40,30 @@ void ringbuffer_init (ringbuffer* buf)
 /* Copies `element` into the ringbuffer. Returns the number of copied bytes.
  * If the ringbuffer is full, does nothing and returns 0.
  */
-int ringbuffer_put (ringbuffer* buf,
-                       unsigned char* element)
+int ringbuffer_put(ringbuffer* buf, unsigned char* element)
 {
   int i = (buf->head + RINGBUFFER_ELEMENT_SIZE) & (RINGBUFFER_CAPACITY - 1);
-  if (i == buf->tail)
+  if(i == buf->tail)
     return 0; // full
 
-  memcpy (buf->data + buf->head, element, RINGBUFFER_ELEMENT_SIZE);
+  memcpy(buf->data + buf->head, element, RINGBUFFER_ELEMENT_SIZE);
   buf->head = i;
 
   return RINGBUFFER_ELEMENT_SIZE;
 }
 
-
 /* Copies the next entry from `buf` into `element` and returns the number
  * of copied bytes.
  * If the ringbuffer is empty, does nothing and returns 0.
  */
-int ringbuffer_get(ringbuffer* buf,
-                      unsigned char* element)
+int ringbuffer_get(ringbuffer* buf, unsigned char* element)
 {
-  if (buf->tail == buf->head)
+  if(buf->tail == buf->head)
     return 0; // empty
 
-  memcpy (element, buf->data + buf->tail, RINGBUFFER_ELEMENT_SIZE);
-  buf->tail = (buf->tail + RINGBUFFER_ELEMENT_SIZE) & (RINGBUFFER_CAPACITY - 1);
+  memcpy(element, buf->data + buf->tail, RINGBUFFER_ELEMENT_SIZE);
+  buf->tail =
+    (buf->tail + RINGBUFFER_ELEMENT_SIZE) & (RINGBUFFER_CAPACITY - 1);
 
   return RINGBUFFER_ELEMENT_SIZE;
 }

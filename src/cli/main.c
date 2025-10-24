@@ -45,20 +45,23 @@
 */
 
 #include <core/agc_simulator.h>
-#include "agc_cli.h"
 #include <termios.h>
 
+#include "agc_cli.h"
+
 // Set terminal to raw mode (no buffering, no enter needed)
-void set_conio_terminal_mode() {
+void set_conio_terminal_mode()
+{
   struct termios new_termios;
 
-  tcgetattr(0, &new_termios);  // get current terminal state
+  tcgetattr(0, &new_termios); // get current terminal state
   new_termios.c_lflag &= ~(ICANON | ECHO); // disable canonical mode & echo
   tcsetattr(0, TCSANOW, &new_termios);
 }
 
 // Restore terminal to normal mode
-void reset_terminal_mode() {
+void reset_terminal_mode()
+{
   struct termios term;
   tcgetattr(0, &term);
   term.c_lflag |= (ICANON | ECHO);
@@ -69,19 +72,18 @@ void reset_terminal_mode() {
 The AGC main function from here the Command Line is parsed, the
 Simulator is initialized and subsequently executed.
 */
-int main (int argc, char *argv[])
+int main(int argc, char* argv[])
 {
   set_conio_terminal_mode();
 
-	/* Declare Options and parse the command line */
-	opt_t *Options = CliParseArguments(argc, argv);
+  /* Declare Options and parse the command line */
+  opt_t* Options = CliParseArguments(argc, argv);
 
-	/* Initialize the Simulator and debugger if enabled
+  /* Initialize the Simulator and debugger if enabled
 	 * if the initialization fails or Options is NULL then the simulator will
 	 * return a non zero value and subsequently bail and exit the program */
-	if (sim_init(Options) == SIM_E_OK) sim_exec();
+  if(sim_init(Options) == SIM_E_OK)
+    sim_exec();
 
-	return (0);
+  return (0);
 }
-
-

@@ -1,14 +1,61 @@
-# Generated from CLion C/C++ Code Style settings
 ---
 Language: Cpp
-BasedOnStyle: LLVM
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+BasedOnStyle: Google
+
+# Basic formatting
+IndentWidth: 2
+UseTab: Never
+ColumnLimit: 70 # more struct than the desired 80 to allow function argument packing
+MaxEmptyLinesToKeep: 1  # Increased to ensure spacing between functions
+SeparateDefinitionBlocks: Always  # Added to ensure spacing between function declarations
+
+# Spaces
+SpaceBeforeParens: Never
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles: false
+SpacesInContainerLiterals: false
+SpaceInEmptyParentheses: false
+SpaceAfterTemplateKeyword: false
+SpacesBeforeTrailingComments: 1
+
+# Alignments and Breaking
+PenaltyBreakAssignment: 1
+PenaltyBreakBeforeFirstCallParameter: 1
+PenaltyBreakComment: 1
+PenaltyBreakFirstLessLess: 1
+PenaltyBreakString: 1
+PenaltyBreakTemplateDeclaration: 1
+PenaltyExcessCharacter: 1
+PenaltyReturnTypeOnItsOwnLine: 100
+AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
 AlignOperands: false
-AlignTrailingComments: false
+AlignTrailingComments: true
+ContinuationIndentWidth: 2
+
+# Line Breaks
+AllowAllArgumentsOnNextLine: true
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: None
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: None
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
-BraceWrapping: 
-  AfterCaseLabel: true
+BinPackArguments: false
+BinPackParameters: false
+ExperimentalAutoDetectBinPacking: true
+PackConstructorInitializers: Never
+BreakBeforeBraces: Allman
+BraceWrapping:
   AfterClass: true
   AfterControlStatement: true
   AfterEnum: true
@@ -16,39 +63,36 @@ BraceWrapping:
   AfterNamespace: true
   AfterStruct: true
   AfterUnion: true
-  AfterExternBlock: false
   BeforeCatch: true
   BeforeElse: true
-  BeforeLambdaBody: true
-  BeforeWhile: true
+  IndentBraces: false
   SplitEmptyFunction: true
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
-BreakBeforeBraces: Custom
-BreakConstructorInitializers: AfterColon
-BreakConstructorInitializersBeforeComma: false
-ColumnLimit: 120
-ConstructorInitializerAllOnOneLineOrOnePerLine: false
-ContinuationIndentWidth: 2
-IncludeCategories: 
-  - Regex: '^<.*'
-    Priority: 1
-  - Regex: '^".*'
-    Priority: 2
-  - Regex: '.*'
-    Priority: 3
-IncludeIsMainRegex: '([-_](test|unittest))?$'
-IndentCaseBlocks: true
-InsertNewlineAtEOF: true
-MacroBlockBegin: ''
-MacroBlockEnd: ''
-MaxEmptyLinesToKeep: 2
-NamespaceIndentation: All
+
+# Function declarations
+AllowShortFunctionsOnASingleLine: None
+BreakBeforeInheritanceComma: true
+BreakConstructorInitializers: BeforeColon
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 0
+
+# Namespaces
+NamespaceIndentation: None
+CompactNamespaces: false
+FixNamespaceComments: true
+
+# Comments
+CommentPragmas: '^ IWYU pragma:'
+ReflowComments: false
+
+# Class formatting
+AccessModifierOffset: -2
+
+# Other
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
 PointerAlignment: Left
-SpaceInEmptyParentheses: false
-SpacesInAngles: false
-SpacesInConditionalStatement: false
-SpacesInCStyleCastParentheses: false
-SpacesInParentheses: false
-TabWidth: 2
-...
+SortIncludes: true
+SortUsingDeclarations: true
+BreakBeforeBinaryOperators: NonAssignment

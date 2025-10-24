@@ -1,7 +1,7 @@
 /*
   Original Copyright 2003-2006,2009 Ronald S. Burkey <info@sandroid.org>
   Modified Copyright 2008,2016 Onno Hommes <ohommes@alumni.cmu.edu>
-  
+
   This file is part of yaAGC.
 
   yaAGC is free software; you can redistribute it and/or modify
@@ -19,15 +19,15 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
   In addition, as a special exception, permission is given to
-  link the code of this program with the Orbiter SDK library (or with 
-  modified versions of the Orbiter SDK library that use the same license as 
-  the Orbiter SDK library), and distribute linked combinations including 
-  the two. You must obey the GNU General Public License in all respects for 
-  all of the code used other than the Orbiter SDK library. If you modify 
-  this file, you may extend this exception to your version of the file, 
-  but you are not obligated to do so. If you do not wish to do so, delete 
-  this exception statement from your version. 
- 
+  link the code of this program with the Orbiter SDK library (or with
+  modified versions of the Orbiter SDK library that use the same license as
+  the Orbiter SDK library), and distribute linked combinations including
+  the two. You must obey the GNU General Public License in all respects for
+  all of the code used other than the Orbiter SDK library. If you modify
+  this file, you may extend this exception to your version of the file,
+  but you are not obligated to do so. If you do not wish to do so, delete
+  this exception statement from your version.
+
   Filename:	agc_simulator.h
   Purpose:	This header contains the simulator interface definitions
   Contact:	Onno Hommes <ohommes@alumni.cmu.edu>
@@ -37,13 +37,13 @@
  */
 #pragma once
 #ifdef WIN32
-#include <winsock2.h>
-#include <windows.h>
 #include <sys/time.h>
+#include <windows.h>
+#include <winsock2.h>
 #define LB "\r\n"
 #else
-#include <time.h>
 #include <sys/times.h>
+#include <time.h>
 #define LB ""
 #endif
 
@@ -60,16 +60,15 @@ struct tms {
 
 #define _SC_CLK_TCK (1000)
 #define sysconf(x) (x)
-#define times(p) (clock_t)GetTickCount ()
+#define times(p) (clock_t) GetTickCount()
 
 #endif
 
-#define SIM_E_OK  0
+#define SIM_E_OK 0
 #define SIM_E_VERSION 6
 
-#define SIM_CYCLECOUNT_INC 	1
-#define SIM_CYCLECOUNT_AGC	2
-
+#define SIM_CYCLECOUNT_INC 1
+#define SIM_CYCLECOUNT_AGC 2
 
 typedef struct
 {
@@ -92,27 +91,27 @@ typedef struct
   int   fullname;
   int   debug;
   int   interlace;
-  int	resumed;
-  int	version;
-  int	initializeSunburst37;
-  int	no_resume;
+  int   resumed;
+  int   version;
+  int   initializeSunburst37;
+  int   no_resume;
 } opt_t;
 
 typedef struct
 {
-	opt_t* opt;
-	clock_t dump_interval;
-	clock_t real_time_offset;
-	clock_t real_time;
-	clock_t last_real_time;
-	clock_t next_core_dump;
-	uint64_t desired_cycles;
-	uint64_t cycle_dump;
-	struct tms dummy_time;
-	agc_state_t state;
+  opt_t*      opt;
+  clock_t     dump_interval;
+  clock_t     real_time_offset;
+  clock_t     real_time;
+  clock_t     last_real_time;
+  clock_t     next_core_dump;
+  uint64_t    desired_cycles;
+  uint64_t    cycle_dump;
+  struct tms  dummy_time;
+  agc_state_t state;
 } sim_t;
 
 extern void sim_set_cycle_count(int Mode);
-extern int sim_init(opt_t* Options);
+extern int  sim_init(opt_t* Options);
 extern void sim_exec(void);
 extern void sin_time_update(void);

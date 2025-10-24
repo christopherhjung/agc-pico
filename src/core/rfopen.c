@@ -18,17 +18,17 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
   In addition, as a special exception, Ronald S. Burkey gives permission to
-  link the code of this program with the Orbiter SDK library (or with 
-  modified versions of the Orbiter SDK library that use the same license as 
-  the Orbiter SDK library), and distribute linked combinations including 
-  the two. You must obey the GNU General Public License in all respects for 
-  all of the code used other than the Orbiter SDK library. If you modify 
-  this file, you may extend this exception to your version of the file, 
-  but you are not obligated to do so. If you do not wish to do so, delete 
-  this exception statement from your version. 
- 
+  link the code of this program with the Orbiter SDK library (or with
+  modified versions of the Orbiter SDK library that use the same license as
+  the Orbiter SDK library), and distribute linked combinations including
+  the two. You must obey the GNU General Public License in all respects for
+  all of the code used other than the Orbiter SDK library. If you modify
+  this file, you may extend this exception to your version of the file,
+  but you are not obligated to do so. If you do not wish to do so, delete
+  this exception statement from your version.
+
   Filename:	rfopen.c
-  Purpose:	A replacement for fopen which looks in the installation 
+  Purpose:	A replacement for fopen which looks in the installation
   		directory if the file isn't in the current directory.
   Compiler:	GNU gcc.
   Contact:	Ron Burkey <info@sandroid.org>
@@ -48,16 +48,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "agc_engine.h"
 
 //---------------------------------------------------------------------------
 // My feeble attempt at looking for stuff like Luminary131.bin or LM.ini in
 // the installation directory if not found in the current directory.
 
-// This default probably looks right only for *nix, and not for Win32, 
+// This default probably looks right only for *nix, and not for Win32,
 // we also use this directory in Win32 because the build-instructions
 // assume the use of Msys (which is the mingw32 compiler's cygwin-like
-// environment), so there actually is a /usr/local/bin directory in 
+// environment), so there actually is a /usr/local/bin directory in
 // both cases.
 #ifndef INSTALLDIR
 #ifdef WIN32
@@ -67,25 +68,23 @@
 #endif
 #endif
 static char DefaultInstallationPath[] = INSTALLDIR;
-char *InstallationPath = DefaultInstallationPath; 
+char*       InstallationPath          = DefaultInstallationPath;
 
-FILE *
-rfopen (const char *Filename, const char *mode)
+FILE* rfopen(const char* Filename, const char* mode)
 {
-  char *NewFilename;
-  FILE *fp;
+  char* NewFilename;
+  FILE* fp;
   //printf ("\'%s\'\n", INSTALLDIR);
-  fp = fopen (Filename, mode);
-  if (fp != NULL)
+  fp = fopen(Filename, mode);
+  if(fp != NULL)
     return (fp);
-  NewFilename =
-    (char *) malloc (2 + strlen (Filename) + strlen (InstallationPath));
-  if (NewFilename == NULL)
+  NewFilename = (char*)malloc(2 + strlen(Filename) + strlen(InstallationPath));
+  if(NewFilename == NULL)
     return (NULL);
-  strcpy (NewFilename, InstallationPath);
-  strcat (NewFilename, "/");
-  strcat (NewFilename, Filename);
-  fp = fopen (NewFilename, mode);
-  free (NewFilename);
+  strcpy(NewFilename, InstallationPath);
+  strcat(NewFilename, "/");
+  strcat(NewFilename, Filename);
+  fp = fopen(NewFilename, mode);
+  free(NewFilename);
   return (fp);
 }
