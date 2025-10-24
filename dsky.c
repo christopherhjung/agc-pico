@@ -178,8 +178,8 @@ int dsky_update_digit(dsky_t *dsky, uint16_t value)
     dsky->rows[2].plus = sign;
     break;
   case 3:
-    dsky->rows[2].first = left;
-    dsky->rows[1].fifth = right;
+    dsky->rows[2].first = right;
+    dsky->rows[1].fifth = left;
     break;
   case 4:
     dsky->rows[1].fourth = right;
