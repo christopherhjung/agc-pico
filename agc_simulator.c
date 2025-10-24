@@ -261,8 +261,8 @@ static void SimManageTime(void)
 int idx = 0;
 Keyboard keys[] = {
   KEY_VERB,
-  KEY_THREE,
-  KEY_FIVE,
+  KEY_NINE,
+  KEY_ONE,
   KEY_ENTER
 };
 

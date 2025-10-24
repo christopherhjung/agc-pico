@@ -165,13 +165,14 @@ void dsky_two_print(dsky_two_t *two)
 
 void dsky_print(dsky_t *dsky)
 {
-  printf("CA PR VB NO\n");
+  printf("CA  PR\n");
   printf(" %c", dsky->comp_acty ? 'X' : ' ');
-  printf(" ");
+  printf("  ");
   dsky_two_print(&dsky->prog);
-  printf(" ");
+  printf("\n");
+  printf("VB  NO\n");
   dsky_two_print(&dsky->verb);
-  printf(" ");
+  printf("  ");
   dsky_two_print(&dsky->noun);
   printf("\n");
   dsky_row_print(&dsky->rows[0]);
