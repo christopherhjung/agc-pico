@@ -509,21 +509,6 @@ static const int ExtracodeTiming[32] = {
   2, 2, 2, 2  // Opcode = 017.
 };
 
-// A way, for debugging, to disable interrupts. The 0th entry disables
-// everything if 0.  Entries 1-10 disable individual interrupts.
-int DebuggerInterruptMasks[11] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-
-//-----------------------------------------------------------------------------
-// Stuff for doing structural coverage analysis.  Yes, I know it could be done
-// much more cleverly.
-
-int      COVERAGE_COUNTS = 0; // Increment coverage counts is != 0.
-unsigned ErasableReadCounts[8][0400];
-unsigned ErasableWriteCounts[8][0400];
-unsigned ErasableInstructionCounts[8][0400];
-unsigned FixedAccessCounts[40][02000];
-unsigned IoReadCounts[01000];
-unsigned IoWriteCounts[01000];
 
 // For debugging the CDUX,Y,Z inputs.
 FILE* CduLog = NULL;
@@ -553,8 +538,6 @@ int read_io(agc_state_t* state, int Address)
 {
   if(Address < 0 || Address > 0777)
     return (0);
-  if(COVERAGE_COUNTS)
-    IoReadCounts[Address]++;
   if(Address == RegL || Address == RegQ)
     return (state->erasable[0][Address]);
   return (state->input_channel[Address]);
@@ -566,8 +549,6 @@ void write_io(agc_state_t* state, int Address, int Value)
   Value &= 077777;
   if(Address < 0 || Address > 0777)
     return;
-  if(COVERAGE_COUNTS)
-    IoWriteCounts[Address]++;
   if(Address == RegL || Address == RegQ)
     state->erasable[0][Address] = Value;
 
@@ -745,73 +726,6 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
   return addr;
 }
 
-// Same thing, basically, but for collecting coverage data.
-#if 0
-static void
-CollectCoverage (agc_state_t * State, int Address12, int Read, int Write, int Instruction)
-{
-  int AdjustmentEB, AdjustmentFB;
-
-  if (!COVERAGE_COUNTS)
-  return;
-
-  // Get rid of the parity bit.
-  Address12 = Address12;
-
-  // Make sure the darn thing really is 12 bits.
-  Address12 &= 07777;
-
-  if (Address12 < 00400)// Unswitched-erasable.
-    {
-      AdjustmentEB = 0;
-      goto Erasable;
-    }
-  else if (Address12 < 01000)	// Unswitched-erasable (continued).
-    {
-      AdjustmentEB = 1;
-      goto Erasable;
-    }
-  else if (Address12 < 01400)	// Unswitched-erasable (continued).
-    {
-      AdjustmentEB = 2;
-      goto Erasable;
-    }
-  else if (Address12 < 02000)	// Switched-erasable.
-    {
-      // Recall that the parity bit is accounted for in the shift below.
-      AdjustmentEB = (7 & (c (RegEB) >> 8));
-      Erasable:
-      Address12 &= 00377;
-      if (Read)
-      ErasableReadCounts[AdjustmentEB][Address12]++;
-      if (Write)
-      ErasableWriteCounts[AdjustmentEB][Address12]++;
-      if (Instruction)
-      ErasableInstructionCounts[AdjustmentEB][Address12]++;
-    }
-  else if (Address12 < 04000)	// Fixed-switchable.
-    {
-      AdjustmentFB = (037 & (c (RegFB) >> 10));
-      // Account for the superbank bit.
-      if (030 == (AdjustmentFB & 030) && (State->output_channel_7 & 0100) != 0)
-      AdjustmentFB += 010;
-      Fixed:
-      FixedAccessCounts[AdjustmentFB][Address12 & 01777]++;
-    }
-  else if (Address12 < 06000)	// Fixed-fixed.
-    {
-      AdjustmentFB = 2;
-      goto Fixed;
-    }
-  else				// Fixed-fixed (continued).
-    {
-      AdjustmentFB = 3;
-      goto Fixed;
-    }
-  return;
-}
-#endif //0
-
 //-----------------------------------------------------------------------------
 // Assign a new value to "erasable" memory, performing editing as necessary
 // if the destination address is one of the 4 editing registers.  The value to
@@ -826,8 +740,6 @@ static void assign(agc_state_t* state, int bank, int offset, int value)
     return; // Non-erasable memory.
   if(offset < 0 || offset >= 0400)
     return;
-  if(COVERAGE_COUNTS)
-    ErasableWriteCounts[bank][offset]++;
   if(bank == 0)
   {
     switch(offset)
@@ -1361,7 +1273,7 @@ typedef struct
   int      size;         // Number of entries.
   int      interval_type; // 0,1,2,0,1,2,...
   uint64_t next_update; // Cycle count at which next counter update occurs.
-  int32_t counts[MAX_CDU_FIFO_ENTRIES];
+  uint32_t counts[MAX_CDU_FIFO_ENTRIES];
 } cdu_fifo_t;
 
 static cdu_fifo_t CduFifos[NUM_CDU_FIFOS]; // For registers 032, 033, and 034.
@@ -1381,7 +1293,7 @@ static int CduChecker = 0; // 0, 1, ..., NUM_CDU_FIFOS-1, 0, 1, ...
 // The least-significant 30 bits are simply the absolute value of the count.
 static void push_cdu_fifo(agc_state_t* state, int counter, int inc_type)
 {
-  int32_t base, interval;
+  uint32_t base, interval;
   if(counter < FIRST_CDU || counter >= FIRST_CDU + NUM_CDU_FIFOS)
     return;
   switch(inc_type)
@@ -1532,17 +1444,14 @@ static int sdu_fifo(agc_state_t* state)
 
 void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
 {
-  int16_t* Ch;
-  int      Overflow = 0;
+  int      ovf = 0;
   counter &= 0x7f;
-  Ch = &state->erasable[0][counter];
-  if(COVERAGE_COUNTS)
-    ErasableWriteCounts[0][counter]++;
+  int16_t* ch = &state->erasable[0][counter];
   switch(inc_type)
   {
     case 0:
       //TrapPIPA = (Counter >= 037 && Counter <= 041);
-      Overflow = counter_pinc(Ch);
+      ovf = counter_pinc(ch);
       break;
     case 1:
     case 021:
@@ -1550,11 +1459,11 @@ void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
       if(counter >= FIRST_CDU && counter < FIRST_CDU + NUM_CDU_FIFOS)
         push_cdu_fifo(state, counter, inc_type);
       else
-        Overflow = counter_pcdu(Ch);
+        ovf = counter_pcdu(ch);
       break;
     case 2:
       //TrapPIPA = (Counter >= 037 && Counter <= 041);
-      Overflow = counter_minc(Ch);
+      ovf = counter_minc(ch);
       break;
     case 3:
     case 023:
@@ -1562,21 +1471,21 @@ void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
       if(counter >= FIRST_CDU && counter < FIRST_CDU + NUM_CDU_FIFOS)
         push_cdu_fifo(state, counter, inc_type);
       else
-        Overflow = counter_mcdu(Ch);
+        ovf = counter_mcdu(ch);
       break;
     case 4:
-      Overflow = counter_dinc(state, counter, Ch);
+      ovf = counter_dinc(state, counter, ch);
       break;
     case 5:
-      Overflow = counter_shinc(Ch);
+      ovf = counter_shinc(ch);
       break;
     case 6:
-      Overflow = counter_shanc(Ch);
+      ovf = counter_shanc(ch);
       break;
     default:
       break;
   }
-  if(Overflow)
+  if(ovf)
   {
     // On some counters, overflow is supposed to cause
     // an interrupt.  Take care of setting the interrupt request here.
@@ -2427,7 +2336,7 @@ int agc_engine(agc_state_t* state)
 
   // Handle interrupts.
   if(
-    (DebuggerInterruptMasks[0] && !state->in_isr && state->allow_interrupt
+    (!state->in_isr && state->allow_interrupt
      && !state->extra_code && !state->pend_flag && !ovf
      && inst != 3 && inst != 4 && inst != 6)
     || ext_ppcode == 0107) // Always check if the instruction is EDRUPT.
@@ -2441,7 +2350,7 @@ int agc_engine(agc_state_t* state)
     // Search for the next interrupt request.
     for(i = 1; i <= NUM_INTERRUPT_TYPES; i++)
     {
-      if(state->interrupt_requests[i] && DebuggerInterruptMasks[i])
+      if(state->interrupt_requests[i])
       {
         // Clear the interrupt request.
         state->interrupt_requests[i] = 0;
