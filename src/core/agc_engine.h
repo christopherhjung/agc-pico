@@ -283,12 +283,12 @@ typedef struct
   // The following variable counts the total number of clock cycles since
   // CPU-startup.  A 64-bit integer is used, because with a 32-bit integer
   // you'd get only about 14 hours before the counter wraps around.
-  uint64_t /* unsigned long long */ cycle_counter;
+  uint64_t cycle_counter;
   // All memory -- registers, RAM, and ROM -- is 16-bit, consisting of 15 bits
   // of data and one of (odd) parity.  The MIT documents consistently
   // use octal, so we do as well.
   //int16_t Memory[RegEND];             // Note use of octal.
-  int16_t Erasable[8][0400]; // Banks 0,1,2 are "unswitched erasable".
+  int16_t erasable[8][0400]; // Banks 0,1,2 are "unswitched erasable".
   // There are actually only 36 (0-043) fixed banks, but the calculation of bank
   // numbers by the AGC can theoretically go 0-39 (0-047).  Therefore, I
   // provide some extra.
@@ -370,5 +370,5 @@ void agc_channel_output(agc_state_t* State, int channel, int value);
 int  agc_channel_input(agc_state_t* State);
 int  dsky_channel_input(int* channel, int* value);
 int  dsky_channel_output(int channel, int value);
-void channel_routine(agc_state_t* State);
-void request_radar_data(agc_state_t* State);
+void channel_routine(agc_state_t* state);
+void request_radar_data(agc_state_t* state);

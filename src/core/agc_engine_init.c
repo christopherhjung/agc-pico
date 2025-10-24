@@ -251,8 +251,8 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
   // Clear erasable memory.
   for(Bank = 0; Bank < 8; Bank++)
     for(j = 0; j < 0400; j++)
-      state->Erasable[Bank][j] = 0;
-  state->Erasable[0][RegZ] = 04000; // Initial program counter.
+      state->erasable[Bank][j] = 0;
+  state->erasable[0][RegZ] = 04000; // Initial program counter.
 
   // Set up the CPU state variables that aren't part of normal memory.
   state->cycle_counter   = 0;
@@ -312,10 +312,10 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
 
   if(initializeSunburst37)
   {
-    state->Erasable[0][0067] = 077777;
-    state->Erasable[0][0157] = 077777;
-    state->Erasable[0][0375] = 005605;
-    state->Erasable[0][0376] = 004003;
+    state->erasable[0][0067] = 077777;
+    state->erasable[0][0157] = 077777;
+    state->erasable[0][0375] = 005605;
+    state->erasable[0][0376] = 004003;
   }
 
   if(core_dump != NULL)
@@ -348,7 +348,7 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
           if(1 != fscanf(cd, "%o", &i))
             goto Done;
           if(all_or_erasable || Bank > 0 || j >= 010)
-            state->Erasable[Bank][j] = i;
+            state->erasable[Bank][j] = i;
         }
 
       if(all_or_erasable)
