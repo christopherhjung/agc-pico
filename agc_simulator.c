@@ -335,11 +335,48 @@ typedef struct
 
 typedef struct
 {
-  int prog;
-  int verb;
-  int noun;
+  unsigned int on:1;
+  unsigned int first :4;
+  unsigned int second: 4;
+} dsky_two_t;
+
+typedef struct
+{
+  dsky_two_t prog;
+  dsky_two_t verb;
+  dsky_two_t noun;
   dsky_row_t rows[3];
+  unsigned int comp_acty:1;
 } dsky_t;
+
+void init_dsky_row(dsky_row_t* row)
+{
+  row->plus = 0;
+  row->minus = 0;
+  row->first = 10;
+  row->second = 10;
+  row->third = 10;
+  row->fourth = 10;
+  row->fifth = 10;
+}
+
+void init_dsky_two(dsky_two_t* two)
+{
+  two->on = 1;
+  two->first = 10;
+  two->second = 10;
+}
+
+void init_dsky(dsky_t* dsky)
+{
+  dsky->comp_acty = 0;
+  init_dsky_two(&dsky->prog);
+  init_dsky_two(&dsky->verb);
+  init_dsky_two(&dsky->noun);
+  init_dsky_row(&dsky->rows[0]);
+  init_dsky_row(&dsky->rows[1]);
+  init_dsky_row(&dsky->rows[2]);
+}
 
 int update_dsky(dsky_t *dsky, uint16_t value)
 {
@@ -388,13 +425,16 @@ int update_dsky(dsky_t *dsky, uint16_t value)
     dsky->rows[0].first = right;
     break;
   case 9:
-    dsky->noun = left << 4 | right;
+    dsky->noun.first = left;
+    dsky->noun.second = right;
     break;
   case 10:
-    dsky->verb = left << 4 | right;
+    dsky->verb.first = left;
+    dsky->verb.second = right;
     break;
   case 11:
-    dsky->prog = left << 4 | right;
+    dsky->prog.first = left;
+    dsky->prog.second = right;
     break;
   default:
     return 0;
@@ -414,10 +454,25 @@ void print_dsky_row(dsky_row_t *row)
   printf("%c%c%c%c%c%c\n", row->minus ? '-' : row->plus ? '+' : ' ', digit2char(row->first), digit2char(row->second), digit2char(row->third), digit2char(row->fourth), digit2char(row->fifth));
 }
 
+void print_dsky_two(dsky_two_t *two)
+{
+  if (two->on)
+    printf("%c%c", digit2char(two->first), digit2char(two->second));
+  else
+    printf("  ");
+}
+
 void print_dsky(dsky_t *dsky)
 {
-  printf("PR VB NO\n");
-  printf("%c%c %c%c %c%c\n", digit2char(dsky->prog >> 4), digit2char(dsky->prog & 0x7), digit2char(dsky->verb >> 4), digit2char(dsky->verb & 0x7d), digit2char(dsky->noun >> 4), digit2char(dsky->noun & 0x7));
+  printf("CA PR VB NO\n");
+  printf(" %c", dsky->comp_acty ? 'X' : ' ');
+  printf(" ");
+  print_dsky_two(&dsky->prog);
+  printf(" ");
+  print_dsky_two(&dsky->verb);
+  printf(" ");
+  print_dsky_two(&dsky->noun);
+  printf("\n");
   print_dsky_row(&dsky->rows[0]);
   print_dsky_row(&dsky->rows[1]);
   print_dsky_row(&dsky->rows[2]);
@@ -426,6 +481,7 @@ void print_dsky(dsky_t *dsky)
 void SimExecute(void)
 {
   dsky_t dsky = {0};
+  init_dsky(&dsky);
 	while(1)
 	{
 		/* Manage the Simulated Time */
@@ -442,10 +498,15 @@ void SimExecute(void)
 		  {
 		    if (channel == 010)
 		    {
-          if (update_dsky(&dsky, value))
-          {
+		      if (update_dsky(&dsky, value))
 		        print_dsky(&dsky);
-          }
+		    }else if (channel == 011){
+		      dsky.comp_acty = (value & 2) != 0;
+		    }else if (channel == 0163){
+		      int is_off = (value & 040);
+		      dsky.noun.on = is_off == 0;
+		      dsky.verb.on = is_off == 0;
+		      print_dsky(&dsky);
 		    }
 		  }
 
