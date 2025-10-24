@@ -52,6 +52,7 @@
 #include "agc_simulator.h"
 
 #include <assert.h>
+#include <termios.h>
 #include <sys/errno.h>
 
 /** Declare the singleton Simulator object instance */
@@ -267,6 +268,30 @@ Keyboard keys[] = {
   KEY_ENTER
 };
 
+int kbhit() {
+  struct termios oldt, newt;
+  int ch;
+  int oldf;
+
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+  ch = getchar();
+
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+  if (ch != EOF) {
+    ungetc(ch, stdin);
+    return 1;
+  }
+
+  return 0;
+}
 
 /**
 Execute the simulated CPU.  Expecting to ACCURATELY cycle the simulation every
@@ -312,30 +337,30 @@ void SimExecute(void)
 		    }
 		  }
 
-		  char c = getchar();
-		  if (c != EOF && errno != EAGAIN)
+		  if (kbhit())
 		  {
-		    if (c == '0'){
-		      dsky_keyboard_press(KEY_ZERO);
-		    }if ('1' <= c && c <= '9'){
-		      dsky_keyboard_press(c - '1' + KEY_ONE);
-		    }else if ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z')
+		    int c = getchar();
+		    switch (c)
 		    {
-		      c &= ~0x20;
-		      switch (c)
-		      {
-		      case 'V':
-		        dsky_keyboard_press(KEY_VERB);
-		        break;
-		      case 'N':
-		        dsky_keyboard_press(KEY_NOUN);
-		        break;
-		      case 'E':
-		        dsky_keyboard_press(KEY_ENTER);
-		        break;
-		      }
+		    case '0':
+		      dsky_keyboard_press(KEY_ZERO);
+		      break;
+		    case 'V':
+		    case 'v':
+		      dsky_keyboard_press(KEY_VERB);
+		      break;
+		    case 'N':
+		    case 'n':
+		      dsky_keyboard_press(KEY_NOUN);
+		      break;
+		    case 'E':
+		    case '\n':
+		      dsky_keyboard_press(KEY_ENTER);
+		      break;
+		    default:
+		      if ('1' <= c && c <= '9')
+		        dsky_keyboard_press(c - '1' + KEY_ONE);
 		    }
-
 		  }
 
 		  /* Adjust the CycleCount */

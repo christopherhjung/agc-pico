@@ -47,9 +47,24 @@
 #include "agc_cli.h"
 #include "agc_simulator.h"
 
-#include <unistd.h>
 #include <termios.h>
-#include <fcntl.h>
+
+// Set terminal to raw mode (no buffering, no enter needed)
+void set_conio_terminal_mode() {
+  struct termios new_termios;
+
+  tcgetattr(0, &new_termios);  // get current terminal state
+  new_termios.c_lflag &= ~(ICANON | ECHO); // disable canonical mode & echo
+  tcsetattr(0, TCSANOW, &new_termios);
+}
+
+// Restore terminal to normal mode
+void reset_terminal_mode() {
+  struct termios term;
+  tcgetattr(0, &term);
+  term.c_lflag |= (ICANON | ECHO);
+  tcsetattr(0, TCSANOW, &term);
+}
 
 /**
 The AGC main function from here the Command Line is parsed, the
@@ -57,13 +72,7 @@ Simulator is initialized and subsequently executed.
 */
 int main (int argc, char *argv[])
 {
-  int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
-
-  static struct termios oldt;
-  tcgetattr(STDIN_FILENO, &oldt);   // save old settings
-  oldt.c_lflag &= ~(ICANON | ECHO); // disable canonical mode & echo
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+  set_conio_terminal_mode();
 
 	/* Declare Options and parse the command line */
 	Options_t *Options = CliParseArguments(argc, argv);
