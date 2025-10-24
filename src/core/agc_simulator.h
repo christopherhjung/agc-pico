@@ -114,4 +114,4 @@ typedef struct
 extern void sim_set_cycle_count(int Mode);
 extern int  sim_init(opt_t* Options);
 extern void sim_exec(void);
-extern void sin_time_update(void);
+extern void sim_time_update(void);

@@ -40,12 +40,17 @@
 #include "core/agc_simulator.h"
 
 #include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include "agc_engine.h"
 #include "core/dsky.h"
+
+#ifdef PLATFORMIO
+#include <Arduino.h>
+#else
+#include <unistd.h>
+#include <stdio.h>
+#endif
+
 
 /** Declare the singleton Simulator object instance */
 static sim_t Simulator;
@@ -118,7 +123,7 @@ static int sim_initialize_engine(void)
 This function executes one cycle of the AGC engine. This is
 a wrapper function to eliminate showing the passing of the
 current engine state. */
-static void SimExecuteEngine()
+static void sim_exec_engine()
 {
   agc_engine(&Simulator.state);
 }
@@ -181,10 +186,12 @@ void sim_set_cycle_count(int Mode)
 This function puts the simulator in a sleep state to reduce
 CPU usage on the PC.
 */
-static void SimSleep(void)
+static void sim_sleep(void)
 {
 #ifdef WIN32
   Sleep(10);
+#elif defined(PLATFORMIO)
+  delayMicroseconds(10000);
 #else
   struct timespec req, rem;
   req.tv_sec  = 0;
@@ -196,7 +203,7 @@ static void SimSleep(void)
 /**
  * This function is a helper to allow the debugger to update the realtime
  */
-void sin_time_update(void)
+void sim_time_update(void)
 {
   Simulator.real_time_offset +=
     ((Simulator.real_time = times(&Simulator.dummy_time)) - Simulator.last_real_time);
@@ -207,7 +214,7 @@ void sin_time_update(void)
 This function manages the Simulator time to achieve the
 average 11.7 microsecond per opcode execution
 */
-static void SimManageTime(void)
+static void sim_manage_time(void)
 {
   Simulator.real_time = times(&Simulator.dummy_time);
   if(Simulator.real_time != Simulator.last_real_time)
@@ -233,7 +240,7 @@ static void SimManageTime(void)
     Simulator.desired_cycles *= AGC_PER_SECOND;
   }
   else
-    SimSleep();
+    sim_sleep();
 }
 
 /**
@@ -255,12 +262,12 @@ void sim_exec(void)
   while(1)
   {
     /* Manage the Simulated Time */
-    SimManageTime();
+    sim_manage_time();
 
     while(Simulator.cycle_dump < Simulator.desired_cycles)
     {
       /* Execute a cycle of the AGC engine */
-      SimExecuteEngine();
+      sim_exec_engine();
 
       dsky_input_handle(&dsky);
       dsky_output_handle();

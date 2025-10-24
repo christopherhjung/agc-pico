@@ -460,7 +460,7 @@ typedef int            int32_t;
 #define COARSE_SMOOTH 8
 
 // Some helpful macros for manipulating registers.
-#define c(Reg) State->Erasable[0][Reg]
+#define c(Reg) state->Erasable[0][Reg]
 #define IsA(Address) ((Address) == RegA)
 #define IsL(Address) ((Address) == RegL)
 #define IsQ(Address) ((Address) == RegQ)
@@ -681,7 +681,7 @@ void cpu_write_io(agc_state_t* State, int Address, int Value)
 // pointer to the actual word in the simulated memory.  In other words, here
 // we take memory bank-selection into account.
 
-static int16_t* FindMemoryWord(agc_state_t* State, int Address12)
+static int16_t* FindMemoryWord(agc_state_t* state, int Address12)
 {
   //int PseudoAddress;
   int      AdjustmentEB, AdjustmentFB;
@@ -697,29 +697,29 @@ static int16_t* FindMemoryWord(agc_state_t* State, int Address12)
   if(Address12 == 067)
   {
     // Address 67 has been accessed in some way. Clear the Night Watchman.
-    State->night_watchman = 0;
+    state->night_watchman = 0;
   }
 
   // It should be noted as far as unswitched-erasable and common-fixed memory
   // is concerned, that the following rules actually do result in continuous
   // block of memory that don't have problems in crossing bank boundaries.
   if(Address12 < 00400) // Unswitched-erasable.
-    return (&State->Erasable[0][Address12 & 00377]);
+    return (&state->Erasable[0][Address12 & 00377]);
   else if(Address12 < 01000) // Unswitched-erasable (continued).
-    return (&State->Erasable[1][Address12 & 00377]);
+    return (&state->Erasable[1][Address12 & 00377]);
   else if(Address12 < 01400) // Unswitched-erasable (continued).
-    return (&State->Erasable[2][Address12 & 00377]);
+    return (&state->Erasable[2][Address12 & 00377]);
   else if(Address12 < 02000) // Switched-erasable.
   {
     // Recall that the parity bit is accounted for in the shift below.
     AdjustmentEB = (7 & (c(RegEB) >> 8));
-    return (&State->Erasable[AdjustmentEB][Address12 & 00377]);
+    return (&state->Erasable[AdjustmentEB][Address12 & 00377]);
   }
   else if(Address12 < 04000) // Fixed-switchable.
   {
     AdjustmentFB = (037 & (c(RegFB) >> 10));
     // Account for the superbank bit.
-    if(030 == (AdjustmentFB & 030) && (State->output_channel_7 & 0100) != 0)
+    if(030 == (AdjustmentFB & 030) && (state->output_channel_7 & 0100) != 0)
       AdjustmentFB += 010;
   }
   else if(Address12 < 06000) // Fixed-fixed.
@@ -727,14 +727,14 @@ static int16_t* FindMemoryWord(agc_state_t* State, int Address12)
   else // Fixed-fixed (continued).
     AdjustmentFB = 3;
 
-  Addr = (&State->fixed[AdjustmentFB][Address12 & 01777]);
+  Addr = (&state->fixed[AdjustmentFB][Address12 & 01777]);
 
-  if(State->check_parity)
+  if(state->check_parity)
   {
     // Check parity for fixed memory if such checking is enabled
     uint16_t LinearAddr = AdjustmentFB * 02000 + (Address12 & 01777);
     int16_t  ExpectedParity =
-      (State->parities[LinearAddr / 32] >> (LinearAddr % 32)) & 1;
+      (state->parities[LinearAddr / 32] >> (LinearAddr % 32)) & 1;
     int16_t Word = ((*Addr) << 1) | ExpectedParity;
     Word ^= (Word >> 8);
     Word ^= (Word >> 4);
@@ -745,8 +745,8 @@ static int16_t* FindMemoryWord(agc_state_t* State, int Address12)
     {
       // The program is trying to access unused fixed memory, which
       // will trigger a parity alarm.
-      State->parity_fail = 1;
-      State->inputChannel[077] |= CH77_PARITY_FAIL;
+      state->parity_fail = 1;
+      state->inputChannel[077] |= CH77_PARITY_FAIL;
     }
   }
   return Addr;
@@ -1319,18 +1319,18 @@ int CounterSHANC(int16_t* Counter)
 // AUG, and DIM instructins.  The docs aren't very forthcoming as to
 // which counter registers are affected by this ... but still.
 
-static void InterruptRequests(agc_state_t* State, int16_t Address10, int Sum)
+static void InterruptRequests(agc_state_t* state, int16_t Address10, int Sum)
 {
   if(ValueOverflowed(Sum) == AGC_P0)
     return;
   if(IsReg(Address10, RegTIME1))
     CounterPINC(&c(RegTIME2));
   else if(IsReg(Address10, RegTIME5))
-    State->interrupt_requests[2] = 1;
+    state->interrupt_requests[2] = 1;
   else if(IsReg(Address10, RegTIME3))
-    State->interrupt_requests[3] = 1;
+    state->interrupt_requests[3] = 1;
   else if(IsReg(Address10, RegTIME4))
-    State->interrupt_requests[4] = 1;
+    state->interrupt_requests[4] = 1;
   // TIME6 requires a ZOUT to happen during a DINC sequence for its
   // interrupt to fire
 }
@@ -1460,7 +1460,7 @@ static void PushCduFifo(agc_state_t* State, int Counter, int IncType)
 // each time around (in order to preserve proper cycle counts), so this function
 // must be called at at least an 6400*NUM_CDU_FIFO cps rate.  Returns 0 if no
 // counter was updated, non-zero if a counter was updated.
-static int ServiceCduFifo(agc_state_t* State)
+static int sdu_fifo(agc_state_t* State)
 {
   int        Count, RetVal = 0, HighRate, DownCount;
   CduFifo_t* CduFifo;
@@ -1725,7 +1725,7 @@ static void UpdateDSKY(agc_state_t* State)
 // results in all cases, including those that result in "total nonsense".
 // If A, L, or Z are the divisor, it assumes that the unexpected transformations
 // have already been applied to the "divisor" argument.
-static void SimulateDV(agc_state_t* State, uint16_t divisor)
+static void SimulateDV(agc_state_t* state, uint16_t divisor)
 {
   uint16_t dividend_sign = 0;
   uint16_t divisor_sign  = 0;
@@ -1838,49 +1838,49 @@ static unsigned OldChannel14 = 0, GyroTimer = 0;
 static uint64_t ImuCduCount  = 0;
 static unsigned ImuChannel14 = 0;
 
-int agc_engine(agc_state_t* State)
+int agc_engine(agc_state_t* state)
 {
   int i, j;
-  uint16_t ProgramCounter, Instruction, /*OpCode,*/ QuarterCode, sExtraCode;
-  int16_t* WhereWord;
-  uint16_t Address12, Address10, Address9;
+  uint16_t pc, inst, /*OpCode,*/ quarter_code, s_extra_code;
+  int16_t* where_word;
+  uint16_t address_12, address_10, address_9;
   int      ValueK, KeepExtraCode = 0;
   //int Operand;
-  int16_t  Operand16;
-  int16_t  CurrentEB, CurrentFB, CurrentBB;
-  uint16_t ExtendedOpcode;
-  int      Overflow, Accumulator;
+  int16_t  pperand_16;
+  int16_t  eb, fb, bb;
+  uint16_t ext_ppcode;
+  int      ovf, acc;
   //int OverflowQ, Qumulator;
   // Keep track of TC executions for the TC Trap alarm
-  int ExecutedTC   = 0;
-  int TCTransient  = 0;
-  int JustTookBZF  = 0;
-  int JustTookBZMF = 0;
+  int executed_tc   = 0;
+  int tc_transient  = 0;
+  int just_took_bzf  = 0;
+  int just_took_bzmf = 0;
 
-  sExtraCode = 0;
+  s_extra_code = 0;
 
   // For DOWNRUPT
-  if(State->downrupt_time_valid && State->cycle_counter >= State->downrupt_time)
+  if(state->downrupt_time_valid && state->cycle_counter >= state->downrupt_time)
   {
-    State->interrupt_requests[8] = 1; // Request DOWNRUPT
-    State->downrupt_time_valid   = 0;
+    state->interrupt_requests[8] = 1; // Request DOWNRUPT
+    state->downrupt_time_valid   = 0;
   }
 
   // The first time through the loop, light up the DSKY RESTART light
-  if(State->cycle_counter == 0)
+  if(state->cycle_counter == 0)
   {
-    State->restart_light = 1;
+    state->restart_light = 1;
   }
 
-  State->cycle_counter++;
+  state->cycle_counter++;
 
   //----------------------------------------------------------------------
   // Update the thingy that determines when 1/1600 second has passed.
   // 1/1600 is the basic timing used to drive timer registers.  1/1600
   // second happens to be 160/3 machine cycles.
 
-  State->scale_counter += SCALER_DIVIDER;
-  State->dsky_timer += SCALER_DIVIDER;
+  state->scale_counter += SCALER_DIVIDER;
+  state->dsky_timer += SCALER_DIVIDER;
 
   //-------------------------------------------------------------------------
 
@@ -1888,16 +1888,16 @@ int agc_engine(agc_state_t* State)
   // communications.  Stuff like listening for clients we only do
   // every once and a while---nominally, every 100 ms.  Actually
   // processing input data is done every cycle.
-  if(State->channel_routine_count == 0)
-    channel_routine(State);
-  State->channel_routine_count = ((State->channel_routine_count + 1) & 017777);
+  if(state->channel_routine_count == 0)
+    channel_routine(state);
+  state->channel_routine_count = ((state->channel_routine_count + 1) & 017777);
 
   // Update the various hardware-driven DSKY lights
-  UpdateDSKY(State);
+  UpdateDSKY(state);
 
   // Get data from input channels.  Return immediately if a unprogrammed
   // counter-increment was performed.
-  if(agc_channel_input(State))
+  if(agc_channel_input(state))
     return (0);
 
   // If in --debug-dsky mode, don't want to take the chance of executing
@@ -1910,9 +1910,9 @@ int agc_engine(agc_state_t* State)
 
   // A little extra delay, needed sometimes after branch instructions that
   // don't always take the same amount of time.
-  if(State->extra_delay)
+  if(state->extra_delay)
   {
-    State->extra_delay--;
+    state->extra_delay--;
     return (0);
   }
 
@@ -1920,26 +1920,26 @@ int agc_engine(agc_state_t* State)
   // we simply return.  We don't do any of the actual computations for such
   // an instruction until the last clock cycle for it is reached.
   // (Except for a few weird cases dealt with by ExtraDelay as above.)
-  if(State->pend_flag && State->pend_delay > 0)
+  if(state->pend_flag && state->pend_delay > 0)
   {
-    State->pend_delay--;
+    state->pend_delay--;
     return (0);
   }
 
   //----------------------------------------------------------------------
   // Take care of any PCDU or MCDU operations that are lingering in CDU
   // FIFOs.
-  if(ServiceCduFifo(State))
+  if(sdu_fifo(state))
   {
     // A CDU counter was serviced, so a cycle was used up, and we must
     // return.
     return (0);
   }
 
-  if(State->inputChannel[032] & 020000)
+  if(state->inputChannel[032] & 020000)
   {
-    State->sby_pressed       = 0;
-    State->sby_still_pressed = 0;
+    state->sby_pressed       = 0;
+    state->sby_still_pressed = 0;
   }
 
   //----------------------------------------------------------------------
@@ -1951,40 +1951,40 @@ int agc_engine(agc_state_t* State)
   // takes 1 machine cycle.
 
   // This can only iterate once, but I use 'while' just in case.
-  while(State->scale_counter >= SCALER_OVERFLOW)
+  while(state->scale_counter >= SCALER_OVERFLOW)
   {
     int TriggeredAlarm = 0;
 
     // First, update SCALER1 and SCALER2. These are direct views into
     // the clock dividers in the Scaler module, and so don't take CPU
     // time to 'increment'
-    State->scale_counter -= SCALER_OVERFLOW;
-    State->inputChannel[ChanSCALER1]++;
-    if(State->inputChannel[ChanSCALER1] == 040000)
+    state->scale_counter -= SCALER_OVERFLOW;
+    state->inputChannel[ChanSCALER1]++;
+    if(state->inputChannel[ChanSCALER1] == 040000)
     {
-      State->inputChannel[ChanSCALER1] = 0;
-      State->inputChannel[ChanSCALER2] =
-        (State->inputChannel[ChanSCALER2] + 1) & 037777;
+      state->inputChannel[ChanSCALER1] = 0;
+      state->inputChannel[ChanSCALER2] =
+        (state->inputChannel[ChanSCALER2] + 1) & 037777;
     }
 
     // Check alarms first, since there's a chance we might go to standby
-    if(04000 == (07777 & State->inputChannel[ChanSCALER1]))
+    if(04000 == (07777 & state->inputChannel[ChanSCALER1]))
     {
       // The Night Watchman begins looking once every 1.28s
-      if(!State->standby)
-        State->night_watchman = 1;
+      if(!state->standby)
+        state->night_watchman = 1;
 
       // The standby circuit finishes checking to see if we're going to standby now
       // (it has the same period as but is 180 degrees out of phase with the Night Watchman)
       if(
-        State->sby_pressed
-        && ((State->inputChannel[013] & 002000) || State->standby))
+        state->sby_pressed
+        && ((state->inputChannel[013] & 002000) || state->standby))
       {
-        if(!State->standby)
+        if(!state->standby)
         {
           // Standby is enabled, and PRO has been held down for the required amount of time.
-          State->standby           = 1;
-          State->sby_still_pressed = 1;
+          state->standby           = 1;
+          state->sby_still_pressed = 1;
 
           // While this isn't technically an alarm, it causes GOJAM just like all the rest
           if(ShowAlarms)
@@ -1992,28 +1992,28 @@ int agc_engine(agc_state_t* State)
           TriggeredAlarm = 1;
 
           // Turn on the STBY light, and switch off the EL segments
-          State->dsky_channel_163 |= DSKY_STBY | DSKY_EL_OFF;
-          agc_channel_output(State, 0163, State->dsky_channel_163);
+          state->dsky_channel_163 |= DSKY_STBY | DSKY_EL_OFF;
+          agc_channel_output(state, 0163, state->dsky_channel_163);
         }
-        else if(!State->sby_still_pressed)
+        else if(!state->sby_still_pressed)
         {
           // PRO was pressed for long enough to turn us back on. Let's get going!
-          State->standby = 0;
+          state->standby = 0;
 
           // Turn off the STBY light
-          State->dsky_channel_163 &= ~(DSKY_STBY | DSKY_EL_OFF);
-          agc_channel_output(State, 0163, State->dsky_channel_163);
+          state->dsky_channel_163 &= ~(DSKY_STBY | DSKY_EL_OFF);
+          agc_channel_output(state, 0163, state->dsky_channel_163);
         }
       }
     }
-    else if(00000 == (07777 & State->inputChannel[ChanSCALER1]))
+    else if(00000 == (07777 & state->inputChannel[ChanSCALER1]))
     {
       // The standby circuit checks the SBY/PRO button state every 1.28s
-      if(0 == (State->inputChannel[032] & 020000))
-        State->sby_pressed = 1;
+      if(0 == (state->inputChannel[032] & 020000))
+        state->sby_pressed = 1;
 
       // The Night Watchman finishes looking now
-      if(!State->standby && State->night_watchman)
+      if(!state->standby && state->night_watchman)
       {
         // NEWJOB wasn't checked before 0.64s elapsed. Sound the alarm!
         if(ShowAlarms)
@@ -2023,79 +2023,79 @@ int agc_engine(agc_state_t* State)
         // Set the NIGHT WATCHMAN bit in channel 77. Don't go through CpuWriteIO() because
         // instructions writing to CH77 clear it. We'll broadcast changes to it in the
         // generic alarm handler a bit further down.
-        State->inputChannel[077] |= CH77_NIGHT_WATCHMAN;
-        State->night_watchman_tripped = 1;
+        state->inputChannel[077] |= CH77_NIGHT_WATCHMAN;
+        state->night_watchman_tripped = 1;
       }
       else
         // If it's been 1.28s since a Night Watchman alarm happened, stop asserting its
         // channel 77 bit
-        State->night_watchman_tripped = 0;
+        state->night_watchman_tripped = 0;
     }
-    else if(00 == (07 & State->inputChannel[ChanSCALER1]))
+    else if(00 == (07 & state->inputChannel[ChanSCALER1]))
     {
       // Update the warning filter. Once every 160ms, if an input to the filter has been
       // generated (or if the light test is active), the filter is charged. Otherwise,
       // it slowly discharges. This is being modeled as a simple linear function right now,
       // and should be updated when we learn its real implementation details.
       if(
-        (0400 == (0777 & State->inputChannel[ChanSCALER1]))
-        && (State->generated_warning || (State->inputChannel[013] & 01000)))
+        (0400 == (0777 & state->inputChannel[ChanSCALER1]))
+        && (state->generated_warning || (state->inputChannel[013] & 01000)))
       {
-        State->generated_warning = 0;
-        State->warning_filter += WARNING_FILTER_INCREMENT;
-        if(State->warning_filter > WARNING_FILTER_MAX)
-          State->warning_filter = WARNING_FILTER_MAX;
+        state->generated_warning = 0;
+        state->warning_filter += WARNING_FILTER_INCREMENT;
+        if(state->warning_filter > WARNING_FILTER_MAX)
+          state->warning_filter = WARNING_FILTER_MAX;
       }
       else
       {
-        if(State->warning_filter >= WARNING_FILTER_DECREMENT)
-          State->warning_filter -= WARNING_FILTER_DECREMENT;
+        if(state->warning_filter >= WARNING_FILTER_DECREMENT)
+          state->warning_filter -= WARNING_FILTER_DECREMENT;
         else
-          State->warning_filter = 0;
+          state->warning_filter = 0;
       }
     }
 
     // All the rest of this is switched off during standby.
-    if(!State->standby)
+    if(!state->standby)
     {
-      if(0400 == (0777 & State->inputChannel[ChanSCALER1]))
+      if(0400 == (0777 & state->inputChannel[ChanSCALER1]))
       {
         // The Rupt Lock alarm watches ISR state starting every 160ms
-        State->rupt_lock = 1;
-        State->no_rupt   = 1;
+        state->rupt_lock = 1;
+        state->no_rupt   = 1;
       }
       else if(
-        (State->rupt_lock || State->no_rupt)
-        && 0300 == (0777 & State->inputChannel[ChanSCALER1]))
+        (state->rupt_lock || state->no_rupt)
+        && 0300 == (0777 & state->inputChannel[ChanSCALER1]))
       {
         // We've either had no interrupts, or stuck in one, for 140ms. Sound the alarm!
-        if(ShowAlarms && State->rupt_lock)
+        if(ShowAlarms && state->rupt_lock)
           printf("Alarm: RuptLock\n");
-        if(ShowAlarms && State->no_rupt)
+        if(ShowAlarms && state->no_rupt)
           printf("Alarm: NoRupt\n");
         TriggeredAlarm = 1;
 
         // Set the RUPT LOCK bit in channel 77.
-        State->inputChannel[077] |= CH77_RUPT_LOCK;
+        state->inputChannel[077] |= CH77_RUPT_LOCK;
       }
 
-      if(020 == (037 & State->inputChannel[ChanSCALER1]))
+      if(020 == (037 & state->inputChannel[ChanSCALER1]))
       {
         // The TC Trap alarm watches executing instructions every 5ms
-        State->tc_trap = 1;
-        State->no_tc   = 1;
+        state->tc_trap = 1;
+        state->no_tc   = 1;
       }
-      else if((State->tc_trap || State->no_tc) && 000 == (037 & State->inputChannel[ChanSCALER1]))
+      else if((state->tc_trap || state->no_tc) && 000 == (037 & state->inputChannel[ChanSCALER1]))
       {
         // We've either executed no TC at all, or only TCs, for the past 5ms. Sound the alarm!
-        if(ShowAlarms && State->tc_trap)
+        if(ShowAlarms && state->tc_trap)
           printf("Alarm: TCTrap\n");
-        if(ShowAlarms && State->no_tc)
+        if(ShowAlarms && state->no_tc)
           printf("Alarm: NoTC\n");
         TriggeredAlarm = 1;
 
         // Set the TC TRAP bit in channel 77.
-        State->inputChannel[077] |= CH77_TC_TRAP;
+        state->inputChannel[077] |= CH77_TC_TRAP;
       }
 
       // Now that that's taken care of...
@@ -2107,74 +2107,74 @@ int agc_engine(agc_state_t* State)
       // would be saved and the counts would happen immediately
       // after the first instruction at 4000, so doing them now
       // is not too inaccurate.
-      if(020 == (037 & State->inputChannel[ChanSCALER1]))
+      if(020 == (037 & state->inputChannel[ChanSCALER1]))
       {
-        State->extra_delay++;
+        state->extra_delay++;
         if(CounterPINC(&c(RegTIME1)))
         {
-          State->extra_delay++;
+          state->extra_delay++;
           CounterPINC(&c(RegTIME2));
         }
-        State->extra_delay++;
+        state->extra_delay++;
         if(CounterPINC(&c(RegTIME3)))
-          State->interrupt_requests[3] = 1;
+          state->interrupt_requests[3] = 1;
       }
       // TIME5 is the same as TIME3, but 5 ms. out of phase.
-      if(000 == (037 & State->inputChannel[ChanSCALER1]))
+      if(000 == (037 & state->inputChannel[ChanSCALER1]))
       {
-        State->extra_delay++;
+        state->extra_delay++;
         if(CounterPINC(&c(RegTIME5)))
-          State->interrupt_requests[2] = 1;
+          state->interrupt_requests[2] = 1;
 
         // Synchronously with TIME5, if radar activity is enabled,
         // increment the radar gate counter.
-        if(State->inputChannel[013] & 010)
-          State->radar_gate_counter++;
+        if(state->inputChannel[013] & 010)
+          state->radar_gate_counter++;
       }
       // TIME4 is the same as TIME3, but 7.5ms out of phase
-      if(010 == (037 & State->inputChannel[ChanSCALER1]))
+      if(010 == (037 & state->inputChannel[ChanSCALER1]))
       {
-        State->extra_delay++;
+        state->extra_delay++;
         if(CounterPINC(&c(RegTIME4)))
-          State->interrupt_requests[4] = 1;
+          state->interrupt_requests[4] = 1;
       }
       // TIME6 only increments when it has been enabled via CH13 bit 15.
       // It increments 0.3125ms after TIME1/TIME3
-      if(040000 & State->inputChannel[013] && (State->inputChannel[ChanSCALER1] & 01) == 01)
+      if(040000 & state->inputChannel[013] && (state->inputChannel[ChanSCALER1] & 01) == 01)
       {
-        State->extra_delay++;
-        if(CounterDINC(State, 0, &c(RegTIME6)))
+        state->extra_delay++;
+        if(CounterDINC(state, 0, &c(RegTIME6)))
         {
-          State->interrupt_requests[1] = 1;
+          state->interrupt_requests[1] = 1;
           // Triggering a T6RUPT disables T6 by clearing the CH13 bit
-          cpu_write_io(State, 013, State->inputChannel[013] & 037777);
+          cpu_write_io(state, 013, state->inputChannel[013] & 037777);
         }
       }
 
       // Check for HANDRUPT conditions (the actually timing is very slightly off
       // from this, but not enough to matter). The traps are reset upon triggering.
-      if(State->trap_31a && ((State->inputChannel[031] & 000077) != 000077))
+      if(state->trap_31a && ((state->inputChannel[031] & 000077) != 000077))
       {
-        State->trap_31a               = 0;
-        State->interrupt_requests[10] = 1;
+        state->trap_31a               = 0;
+        state->interrupt_requests[10] = 1;
       }
 
-      if(State->trap_31b && ((State->inputChannel[031] & 007700) != 007700))
+      if(state->trap_31b && ((state->inputChannel[031] & 007700) != 007700))
       {
-        State->trap_31b               = 0;
-        State->interrupt_requests[10] = 1;
+        state->trap_31b               = 0;
+        state->interrupt_requests[10] = 1;
       }
 
-      if(State->trap_32 && ((State->inputChannel[032] & 001777) != 001777))
+      if(state->trap_32 && ((state->inputChannel[032] & 001777) != 001777))
       {
-        State->trap_32                = 0;
-        State->interrupt_requests[10] = 1;
+        state->trap_32                = 0;
+        state->interrupt_requests[10] = 1;
       }
 
       // Similarly, check for radar cycle completion. As with HANDRUPT, the
       // timing here is slightly off (early by ~13 MCT), but this should
       // not be enough to matter.
-      if((State->radar_gate_counter == 9) && (036 == (037 & State->inputChannel[ChanSCALER1])))
+      if((state->radar_gate_counter == 9) && (036 == (037 & state->inputChannel[ChanSCALER1])))
       {
         // Completion of a radar cycle triggers the following actions:
         // 1. The radar gate counter is set back to 0.
@@ -2182,91 +2182,91 @@ int agc_engine(agc_state_t* State)
         // 3. Data from the radar is shifted into the RNRAD counter
         //    (this is expected to be performed by RequestRadarData().
         // 4. RADARUPT is set pending.
-        State->radar_gate_counter = 0;
-        State->inputChannel[013] &= ~010;
-        request_radar_data(State);
-        State->interrupt_requests[9] = 1; // RADARUPT
+        state->radar_gate_counter = 0;
+        state->inputChannel[013] &= ~010;
+        request_radar_data(state);
+        state->interrupt_requests[9] = 1; // RADARUPT
       }
     }
 
     // If we triggered any alarms, simulate a GOJAM
-    if(TriggeredAlarm || State->parity_fail)
+    if(TriggeredAlarm || state->parity_fail)
     {
       if(!InhibitAlarms) // ...but only if doing so isn't inhibited
       {
         int i;
 
         // Two single-MCT instruction sequences, GOJAM and TC 4000, are about to happen
-        State->extra_delay += 2;
+        state->extra_delay += 2;
 
         // The net result of those two is Z = 4000. Interrupt state is cleared, and
         // interrupts are enabled. The TC 4000 has the beneficial side-effect of
         // storing the current Z in Q, where it can helpfully be recovered.
         c(RegQ)                = c(RegZ);
         c(RegZ)                = 04000;
-        State->in_isr          = 0;
-        State->allow_interrupt = 1;
-        State->parity_fail     = 0;
+        state->in_isr          = 0;
+        state->allow_interrupt = 1;
+        state->parity_fail     = 0;
 
         // HANDRUPT traps are all disabled.
-        State->trap_31a = 0;
-        State->trap_31b = 0;
-        State->trap_32  = 0;
+        state->trap_31a = 0;
+        state->trap_31b = 0;
+        state->trap_32  = 0;
 
         // All interrupt requests are cleared.
         for(i = 1; i <= NUM_INTERRUPT_TYPES; i++)
-          State->interrupt_requests[i] = 0;
+          state->interrupt_requests[i] = 0;
 
         // Clear channels 5, 6, 10, 11, 12, 13, and 14
-        cpu_write_io(State, 005, 0);
-        cpu_write_io(State, 006, 0);
-        cpu_write_io(State, 010, 0);
-        cpu_write_io(State, 011, 0);
-        cpu_write_io(State, 012, 0);
-        cpu_write_io(State, 013, 0);
-        cpu_write_io(State, 014, 0);
+        cpu_write_io(state, 005, 0);
+        cpu_write_io(state, 006, 0);
+        cpu_write_io(state, 010, 0);
+        cpu_write_io(state, 011, 0);
+        cpu_write_io(state, 012, 0);
+        cpu_write_io(state, 013, 0);
+        cpu_write_io(state, 014, 0);
 
         // Clear the UPLINK TOO FAST bit (11) in channel 33
-        State->inputChannel[033] |= 002000;
+        state->inputChannel[033] |= 002000;
 
         // Clear channels 34 and 35, and don't let doing so generate a downrupt
-        cpu_write_io(State, 034, 0);
-        cpu_write_io(State, 035, 0);
-        State->downrupt_time_valid = 0;
+        cpu_write_io(state, 034, 0);
+        cpu_write_io(state, 035, 0);
+        state->downrupt_time_valid = 0;
 
         // Clear other yaAGC-internal state
-        State->index_value            = AGC_P0;
-        State->extra_code             = 0;
-        State->substitute_instruction = 0;
-        State->pend_flag              = 0;
-        State->pend_delay             = 0;
-        State->took_bzf               = 0;
-        State->took_bzmf              = 0;
+        state->index_value            = AGC_P0;
+        state->extra_code             = 0;
+        state->substitute_instruction = 0;
+        state->pend_flag              = 0;
+        state->pend_delay             = 0;
+        state->took_bzf               = 0;
+        state->took_bzmf              = 0;
 
         // Light the RESTART light on the DSKY, if we're not going into standby
-        if(!State->standby)
+        if(!state->standby)
         {
-          State->restart_light     = 1;
-          State->generated_warning = 1;
+          state->restart_light     = 1;
+          state->generated_warning = 1;
         }
       }
 
       // Push the CH77 updates to the outside world
-      agc_channel_output(State, 077, State->inputChannel[077]);
+      agc_channel_output(state, 077, state->inputChannel[077]);
     }
 
-    if(State->extra_delay)
+    if(state->extra_delay)
     {
       // Return, so as to account for the time occupied by updating the
       // counters and/or GOJAM.
-      State->extra_delay--;
+      state->extra_delay--;
       return (0);
     }
   }
 
   // If we're in standby mode, this is all we can accomplish --
   // everything else is switched off.
-  if(State->standby)
+  if(state->standby)
     return (0);
 
     //----------------------------------------------------------------------
@@ -2282,30 +2282,30 @@ int agc_engine(agc_state_t* State)
     GyroTimer -= GYRO_OVERFLOW;
     // We get to this point 3200 times per second.  We increment the
     // pulse count only if the GYRO ACTIVITY bit in channel 014 is set.
-    if(0 != (State->inputChannel[014] & 01000) && State->Erasable[0][RegGYROCTR] > 0)
+    if(0 != (state->inputChannel[014] & 01000) && state->Erasable[0][RegGYROCTR] > 0)
     {
       GyroCount++;
-      State->Erasable[0][RegGYROCTR]--;
-      if(State->Erasable[0][RegGYROCTR] == 0)
-        State->inputChannel[014] &= ~01000;
+      state->Erasable[0][RegGYROCTR]--;
+      if(state->Erasable[0][RegGYROCTR] == 0)
+        state->inputChannel[014] &= ~01000;
     }
   }
 
   // If 1/4 second (nominal gyro pulse count of 800 decimal) or the gyro
   // bits in channel 014 have changed, output to channel 0177.
-  i = (State->inputChannel[014] & 01740); // Pick off the gyro bits.
+  i = (state->inputChannel[014] & 01740); // Pick off the gyro bits.
   if(i != OldChannel14 || GyroCount >= 800)
   {
     j            = ((OldChannel14 & 0740) << 6) | GyroCount;
     OldChannel14 = i;
     GyroCount    = 0;
-    agc_channel_output(State, 0177, j);
+    agc_channel_output(state, 0177, j);
   }
 #else // GYRO_TIMING_SIMULATED
 #define GYRO_BURST 800
 #define GYRO_BURST2 1024
-  if(0 != (State->inputChannel[014] & 01000))
-    if(0 != State->Erasable[0][RegGYROCTR])
+  if(0 != (state->inputChannel[014] & 01000))
+    if(0 != state->Erasable[0][RegGYROCTR])
     {
       // If any torquing is still pending, do it all at once before
       // setting up a new torque counter.
@@ -2314,13 +2314,13 @@ int agc_engine(agc_state_t* State)
         j = GyroCount;
         if(j > 03777)
           j = 03777;
-        agc_channel_output(State, 0177, OldChannel14 | j);
+        agc_channel_output(state, 0177, OldChannel14 | j);
         GyroCount -= j;
       }
       // Set up new torque counter.
-      GyroCount                      = State->Erasable[0][RegGYROCTR];
-      State->Erasable[0][RegGYROCTR] = 0;
-      OldChannel14 = ((State->inputChannel[014] & 0740) << 6);
+      GyroCount                      = state->Erasable[0][RegGYROCTR];
+      state->Erasable[0][RegGYROCTR] = 0;
+      OldChannel14 = ((state->inputChannel[014] & 0740) << 6);
       GyroTimer    = GYRO_OVERFLOW * GYRO_BURST - GYRO_DIVIDER;
     }
   // Update the 3200 pps gyro pulse counter.
@@ -2333,7 +2333,7 @@ int agc_engine(agc_state_t* State)
       j = GyroCount;
       if(j > GYRO_BURST2)
         j = GYRO_BURST2;
-      agc_channel_output(State, 0177, OldChannel14 | j);
+      agc_channel_output(state, 0177, OldChannel14 | j);
       GyroCount -= j;
     }
   }
@@ -2344,7 +2344,7 @@ int agc_engine(agc_state_t* State)
   // coarse alignment.
 
 #if 0
-  i = (State->inputChannel[014] & 070000);	// Check IMU CDU drive bits.
+  i = (state->inputChannel[014] & 070000);	// Check IMU CDU drive bits.
   if (ImuChannel14 == 0 && i != 0)// If suddenly active, start drive.
   ImuCduCount = IMUCDU_BURST_CYCLES;
   if (i != 0 && ImuCduCount >= IMUCDU_BURST_CYCLES)// Time for next burst.
@@ -2352,24 +2352,24 @@ int agc_engine(agc_state_t* State)
       // Adjust the cycle counter.
       ImuCduCount -= IMUCDU_BURST_CYCLES;
       // Determine how many pulses are wanted on each axis this burst.
-      ImuChannel14 = BurstOutput (State, 040000, RegCDUXCMD, 0174);
-      ImuChannel14 |= BurstOutput (State, 020000, RegCDUYCMD, 0175);
-      ImuChannel14 |= BurstOutput (State, 010000, RegCDUZCMD, 0176);
+      ImuChannel14 = BurstOutput (state, 040000, RegCDUXCMD, 0174);
+      ImuChannel14 |= BurstOutput (state, 020000, RegCDUYCMD, 0175);
+      ImuChannel14 |= BurstOutput (state, 010000, RegCDUZCMD, 0176);
     }
   else
   ImuCduCount++;
 #else  // 0
-  i = (State->inputChannel[014] & 070000); // Check IMU CDU drive bits.
+  i = (state->inputChannel[014] & 070000); // Check IMU CDU drive bits.
   if(ImuChannel14 == 0 && i != 0) // If suddenly active, start drive.
-    ImuCduCount = State->cycle_counter - IMUCDU_BURST_CYCLES;
-  if(i != 0 && (State->cycle_counter - ImuCduCount) >= IMUCDU_BURST_CYCLES) // Time for next burst.
+    ImuCduCount = state->cycle_counter - IMUCDU_BURST_CYCLES;
+  if(i != 0 && (state->cycle_counter - ImuCduCount) >= IMUCDU_BURST_CYCLES) // Time for next burst.
   {
     // Adjust the cycle counter.
     ImuCduCount += IMUCDU_BURST_CYCLES;
     // Determine how many pulses are wanted on each axis this burst.
-    ImuChannel14 = BurstOutput(State, 040000, RegCDUXCMD, 0174);
-    ImuChannel14 |= BurstOutput(State, 020000, RegCDUYCMD, 0175);
-    ImuChannel14 |= BurstOutput(State, 010000, RegCDUZCMD, 0176);
+    ImuChannel14 = BurstOutput(state, 040000, RegCDUXCMD, 0174);
+    ImuChannel14 |= BurstOutput(state, 020000, RegCDUYCMD, 0175);
+    ImuChannel14 |= BurstOutput(state, 010000, RegCDUZCMD, 0176);
   }
 #endif // 0
 
@@ -2379,27 +2379,27 @@ int agc_engine(agc_state_t* State)
   // Just grab the data from the counter and dump it out the appropriate
   // fictitious port as a giant lump.
 
-  if(State->Erasable[0][RegOPTX] && 0 != (State->inputChannel[014] & 02000))
+  if(state->Erasable[0][RegOPTX] && 0 != (state->inputChannel[014] & 02000))
   {
-    agc_channel_output(State, 0172, State->Erasable[0][RegOPTX]);
-    State->Erasable[0][RegOPTX] = 0;
+    agc_channel_output(state, 0172, state->Erasable[0][RegOPTX]);
+    state->Erasable[0][RegOPTX] = 0;
   }
-  if(State->Erasable[0][RegOPTY] && 0 != (State->inputChannel[014] & 04000))
+  if(state->Erasable[0][RegOPTY] && 0 != (state->inputChannel[014] & 04000))
   {
-    agc_channel_output(State, 0171, State->Erasable[0][RegOPTY]);
-    State->Erasable[0][RegOPTY] = 0;
+    agc_channel_output(state, 0171, state->Erasable[0][RegOPTY]);
+    state->Erasable[0][RegOPTY] = 0;
   }
 
   //----------------------------------------------------------------------
   // Okay, here's the stuff that actually has to do with decoding instructions.
 
   // Store the current value of several registers.
-  CurrentEB = c(RegEB);
-  CurrentFB = c(RegFB);
-  CurrentBB = c(RegBB);
+  eb = c(RegEB);
+  fb = c(RegFB);
+  bb = c(RegBB);
   // Reform 16-bit accumulator and test for overflow in accumulator.
-  Accumulator = c(RegA) & 0177777;
-  Overflow    = (ValueOverflowed(Accumulator) != AGC_P0);
+  acc = c(RegA) & 0177777;
+  ovf    = (ValueOverflowed(acc) != AGC_P0);
   //Qumulator = GetQ (State);
   //OverflowQ = (ValueOverflowed (Qumulator) != AGC_P0);
 
@@ -2407,40 +2407,40 @@ int agc_engine(agc_state_t* State)
   // indicate the next instruction to be executed. The Z register is 16
   // bits long, but its value is transferred to the 12-bit S regsiter for
   // addressing, so the upper bits are lost.
-  ProgramCounter = c(RegZ) & 07777;
-  WhereWord      = FindMemoryWord(State, ProgramCounter);
+  pc = c(RegZ) & 07777;
+  where_word      = FindMemoryWord(state, pc);
 
   // Fetch the instruction itself.
   //Instruction = *WhereWord;
-  if(State->substitute_instruction)
-    Instruction = c(RegBRUPT);
+  if(state->substitute_instruction)
+    inst = c(RegBRUPT);
   else
   {
     // The index is sometimes positive and sometimes negative.  What to
     // do if the result has overflow, I can't say.  I arbitrarily
     // overflow-correct it.
-    Instruction = overflow_corrected(add_sp_16(
-      sign_extend(State->index_value), sign_extend(*WhereWord)));
+    inst = overflow_corrected(add_sp_16(
+      sign_extend(state->index_value), sign_extend(*where_word)));
   }
-  Instruction &= 077777;
+  inst &= 077777;
 
-  sExtraCode = State->extra_code;
+  s_extra_code = state->extra_code;
 
-  ExtendedOpcode = Instruction >> 9; //2;
-  if(sExtraCode)
-    ExtendedOpcode |= 0100;
+  ext_ppcode = inst >> 9; //2;
+  if(s_extra_code)
+    ext_ppcode |= 0100;
 
-  QuarterCode = Instruction & ~MASK10;
-  Address12   = Instruction & MASK12;
-  Address10   = Instruction & MASK10;
-  Address9    = Instruction & MASK9;
+  quarter_code = inst & ~MASK10;
+  address_12   = inst & MASK12;
+  address_10   = inst & MASK10;
+  address_9    = inst & MASK9;
 
   // Handle interrupts.
   if(
-    (DebuggerInterruptMasks[0] && !State->in_isr && State->allow_interrupt
-     && !State->extra_code && !State->pend_flag && !Overflow
-     && Instruction != 3 && Instruction != 4 && Instruction != 6)
-    || ExtendedOpcode == 0107) // Always check if the instruction is EDRUPT.
+    (DebuggerInterruptMasks[0] && !state->in_isr && state->allow_interrupt
+     && !state->extra_code && !state->pend_flag && !ovf
+     && inst != 3 && inst != 4 && inst != 6)
+    || ext_ppcode == 0107) // Always check if the instruction is EDRUPT.
   {
     int i;
     int InterruptRequested = 0;
@@ -2452,13 +2452,13 @@ int agc_engine(agc_state_t* State)
     // Search for the next interrupt request.
     for(i = 1; i <= NUM_INTERRUPT_TYPES; i++)
     {
-      if(State->interrupt_requests[i] && DebuggerInterruptMasks[i])
+      if(state->interrupt_requests[i] && DebuggerInterruptMasks[i])
       {
         // Clear the interrupt request.
-        State->interrupt_requests[i] = 0;
-        State->interrupt_requests[0] = i;
+        state->interrupt_requests[i] = 0;
+        state->interrupt_requests[0] = i;
 
-        State->next_z = 04000 + 4 * i;
+        state->next_z = 04000 + 4 * i;
 
         InterruptRequested = 1;
         break;
@@ -2467,27 +2467,27 @@ int agc_engine(agc_state_t* State)
 
     // If no pending interrupts and we're dealing with EDRUPT, fall
     // back to address 0 (A) as the interrupt vector
-    if(!InterruptRequested && ExtendedOpcode == 0107)
+    if(!InterruptRequested && ext_ppcode == 0107)
     {
-      State->next_z      = 0;
+      state->next_z      = 0;
       InterruptRequested = 1;
     }
 
     if(InterruptRequested)
     {
       // Set up the return stuff.
-      c(RegZRUPT) = ProgramCounter + 1;
-      c(RegBRUPT) = Instruction;
+      c(RegZRUPT) = pc + 1;
+      c(RegBRUPT) = inst;
       // Clear various metadata. Extracode is cleared (this can only
       // really happen with EDRUPT), and the index value and substituted
       // instruction were both applied earlier and their effects were
       // saved in BRUPT.
-      State->extra_code             = 0;
-      State->index_value            = AGC_P0;
-      State->substitute_instruction = 0;
+      state->extra_code             = 0;
+      state->index_value            = AGC_P0;
+      state->substitute_instruction = 0;
       // Vector to the interrupt.
-      State->in_isr = 1;
-      State->extra_delay++;
+      state->in_isr = 1;
+      state->extra_delay++;
       goto AllDone;
     }
   }
@@ -2497,28 +2497,28 @@ int agc_engine(agc_state_t* State)
   // AFTER executing the instruction -- not because it's more logically
   // correct, just because it's easier. EDRUPT's timing is handled with
   // the interrupt logic.
-  if(!State->pend_flag)
+  if(!state->pend_flag)
   {
     int i;
-    i = QuarterCode >> 10;
-    if(State->extra_code)
+    i = quarter_code >> 10;
+    if(state->extra_code)
       i = ExtracodeTiming[i];
     else
       i = InstructionTiming[i];
     if(i)
     {
-      State->pend_flag  = 1;
-      State->pend_delay = i - 1;
+      state->pend_flag  = 1;
+      state->pend_delay = i - 1;
       return (0);
     }
   }
   else
-    State->pend_flag = 0;
+    state->pend_flag = 0;
 
   // Now that the index value has been used, get rid of it.
-  State->index_value = AGC_P0;
+  state->index_value = AGC_P0;
   // And similarly for the substitute instruction from a RESUME.
-  State->substitute_instruction = 0;
+  state->substitute_instruction = 0;
 
   // Compute the next value of the instruction pointer. The Z register is
   // 16 bits long, even though in almost all cases only the lower 12 bits
@@ -2526,18 +2526,18 @@ int agc_engine(agc_state_t* State)
   // only the lower 12 bits are read into the adder, so if something sets
   // any of the 4 most significant bits of Z, they will be lost before
   // the next instruction sees them.
-  State->next_z = 1 + c(RegZ);
+  state->next_z = 1 + c(RegZ);
   // The contents of the Z register are updated before an instruction is
   // executed (really, it happens at the end of the previous instruction).
-  c(RegZ) = State->next_z;
+  c(RegZ) = state->next_z;
 
   // A BZF followed by an instruction other than EXTEND causes a TCF0 transient
-  if(State->took_bzf && !((ExtendedOpcode == 000) && (Address12 == 6)))
-    TCTransient = 1;
+  if(state->took_bzf && !((ext_ppcode == 000) && (address_12 == 6)))
+    tc_transient = 1;
 
   // Parse the instruction.  Refer to p.34 of 1689.pdf for an easy
   // picture of what follows.
-  switch(ExtendedOpcode)
+  switch(ext_ppcode)
   {
     case 000: // TC.
     case 001:
@@ -2548,26 +2548,26 @@ int agc_engine(agc_state_t* State)
     case 006:
     case 007:
       // TC instruction (1 MCT).
-      ValueK = Address12; // Convert AGC numerical format to native CPU format.
+      ValueK = address_12; // Convert AGC numerical format to native CPU format.
       if(ValueK == 3) // RELINT instruction.
       {
-        State->allow_interrupt = 1;
+        state->allow_interrupt = 1;
 
-        if(State->took_bzf || State->took_bzmf)
+        if(state->took_bzf || state->took_bzmf)
           // RELINT after a single-cycle instruction causes a TC0 transient
-          TCTransient = 1;
+          tc_transient = 1;
       }
       else if(ValueK == 4) // INHINT instruction.
       {
-        State->allow_interrupt = 0;
+        state->allow_interrupt = 0;
 
-        if(State->took_bzf || State->took_bzmf)
+        if(state->took_bzf || state->took_bzmf)
           // INHINT after a single-cycle instruction causes a TC0 transient
-          TCTransient = 1;
+          tc_transient = 1;
       }
       else if(ValueK == 6) // EXTEND instruction.
       {
-        State->extra_code = 1;
+        state->extra_code = 1;
         // Normally, ExtraCode will be reset when agc_engine is finished.
         // We inhibit that behavior with this flag.
         KeepExtraCode = 1;
@@ -2575,9 +2575,9 @@ int agc_engine(agc_state_t* State)
       else
       {
         if(ValueK != RegQ) // If not a RETURN instruction ...
-          c(RegQ) = 0177777 & State->next_z;
-        State->next_z = Address12;
-        ExecutedTC    = 1;
+          c(RegQ) = 0177777 & state->next_z;
+        state->next_z = address_12;
+        executed_tc    = 1;
       }
 
       break;
@@ -2585,20 +2585,20 @@ int agc_engine(agc_state_t* State)
     case 011:
       // CCS instruction (2 MCT).
       // Figure out where the data is stored, and fetch it.
-      if(Address10 < REG16)
+      if(address_10 < REG16)
       {
-        ValueK    = 0177777 & c(Address10);
-        Operand16 = overflow_corrected(ValueK);
+        ValueK    = 0177777 & c(address_10);
+        pperand_16 = overflow_corrected(ValueK);
         c(RegA)   = odabs(ValueK);
       }
       else // K!=accumulator.
       {
-        WhereWord = FindMemoryWord(State, Address10);
-        Operand16 = *WhereWord & 077777;
+        where_word = FindMemoryWord(state, address_10);
+        pperand_16 = *where_word & 077777;
         // Compute the "diminished absolute value", and save in accumulator.
-        c(RegA) = dabs(Operand16);
+        c(RegA) = dabs(pperand_16);
         // Assign back the read data in case editing is needed
-        AssignFromPointer(State, WhereWord, Operand16);
+        AssignFromPointer(state, where_word, pperand_16);
       }
       // Now perform the actual comparison and jump on the basis
       // of it.  There's no explanation I can find as to what
@@ -2608,16 +2608,16 @@ int agc_engine(agc_state_t* State)
       // is already correct, and in the other cases we need to
       // increment it by 2 less because NextZ has already been
       // incremented.
-      if(Address10 < REG16 && ValueOverflowed(ValueK) == AGC_P1)
-        State->next_z += 0;
-      else if(Address10 < REG16 && ValueOverflowed(ValueK) == AGC_M1)
-        State->next_z += 2;
-      else if(Operand16 == AGC_P0)
-        State->next_z += 1;
-      else if(Operand16 == AGC_M0)
-        State->next_z += 3;
-      else if(0 != (Operand16 & 040000))
-        State->next_z += 2;
+      if(address_10 < REG16 && ValueOverflowed(ValueK) == AGC_P1)
+        state->next_z += 0;
+      else if(address_10 < REG16 && ValueOverflowed(ValueK) == AGC_M1)
+        state->next_z += 2;
+      else if(pperand_16 == AGC_P0)
+        state->next_z += 1;
+      else if(pperand_16 == AGC_M0)
+        state->next_z += 3;
+      else if(0 != (pperand_16 & 040000))
+        state->next_z += 2;
       break;
     case 012: // TCF.
     case 013:
@@ -2626,9 +2626,9 @@ int agc_engine(agc_state_t* State)
     case 016:
     case 017:
       // TCF instruction (1 MCT).
-      State->next_z = Address12;
+      state->next_z = address_12;
       // THAT was easy ... too easy ...
-      ExecutedTC = 1;
+      executed_tc = 1;
       break;
     case 020: // DAS.
     case 021:
@@ -2639,10 +2639,10 @@ int agc_engine(agc_state_t* State)
         // the sign of the lower word of the output does not necessarily
         // match the sign of the upper word.
         int Msw, Lsw;
-        if(IsL(Address10)) // DDOUBL
+        if(IsL(address_10)) // DDOUBL
         {
           Lsw = add_sp_16(0177777 & c(RegL), 0177777 & c(RegL));
-          Msw = add_sp_16(Accumulator, Accumulator);
+          Msw = add_sp_16(acc, acc);
           if((0140000 & Lsw) == 0040000)
             Msw = add_sp_16(Msw, AGC_P1);
           else if((0140000 & Lsw) == 0100000)
@@ -2652,15 +2652,15 @@ int agc_engine(agc_state_t* State)
           c(RegL) = 0177777 & sign_extend(Lsw);
           break;
         }
-        WhereWord = FindMemoryWord(State, Address10);
-        if(Address10 < REG16)
-          Lsw = add_sp_16(0177777 & c(RegL), 0177777 & c(Address10));
+        where_word = FindMemoryWord(state, address_10);
+        if(address_10 < REG16)
+          Lsw = add_sp_16(0177777 & c(RegL), 0177777 & c(address_10));
         else
-          Lsw = add_sp_16(0177777 & c(RegL), sign_extend(*WhereWord));
-        if(Address10 < REG16 + 1)
-          Msw = add_sp_16(Accumulator, 0177777 & c(Address10 - 1));
+          Lsw = add_sp_16(0177777 & c(RegL), sign_extend(*where_word));
+        if(address_10 < REG16 + 1)
+          Msw = add_sp_16(acc, 0177777 & c(address_10 - 1));
         else
-          Msw = add_sp_16(Accumulator, sign_extend(WhereWord[-1]));
+          Msw = add_sp_16(acc, sign_extend(where_word[-1]));
 
         if((0140000 & Lsw) == 0040000)
           Msw = add_sp_16(Msw, AGC_P1);
@@ -2676,42 +2676,42 @@ int agc_engine(agc_state_t* State)
           c(RegA) = AGC_P0;
         c(RegL) = AGC_P0;
         // Save the results.
-        if(Address10 < REG16)
-          c(Address10) = sign_extend(Lsw);
+        if(address_10 < REG16)
+          c(address_10) = sign_extend(Lsw);
         else
-          AssignFromPointer(State, WhereWord, Lsw);
-        if(Address10 < REG16 + 1)
-          c(Address10 - 1) = Msw;
+          AssignFromPointer(state, where_word, Lsw);
+        if(address_10 < REG16 + 1)
+          c(address_10 - 1) = Msw;
         else
-          AssignFromPointer(State, WhereWord - 1, overflow_corrected(Msw));
+          AssignFromPointer(state, where_word - 1, overflow_corrected(Msw));
       }
       break;
     case 022: // LXCH.
     case 023:
       // "LXCH K" instruction (2 MCT).
-      if(IsL(Address10))
+      if(IsL(address_10))
         break;
-      if(IsReg(Address10, RegZERO)) // ZL
+      if(IsReg(address_10, RegZERO)) // ZL
         c(RegL) = AGC_P0;
-      else if(Address10 < REG16)
+      else if(address_10 < REG16)
       {
-        Operand16 = c(RegL);
-        c(RegL)   = c(Address10);
-        if(Address10 >= 020 && Address10 <= 023)
+        pperand_16 = c(RegL);
+        c(RegL)   = c(address_10);
+        if(address_10 >= 020 && address_10 <= 023)
           AssignFromPointer(
-            State, WhereWord, overflow_corrected(0177777 & Operand16));
+            state, where_word, overflow_corrected(0177777 & pperand_16));
         else
-          c(Address10) = Operand16;
-        if(Address10 == RegZ)
-          State->next_z = c(RegZ);
+          c(address_10) = pperand_16;
+        if(address_10 == RegZ)
+          state->next_z = c(RegZ);
       }
       else
       {
-        WhereWord = FindMemoryWord(State, Address10);
-        Operand16 = *WhereWord;
+        where_word = FindMemoryWord(state, address_10);
+        pperand_16 = *where_word;
         AssignFromPointer(
-          State, WhereWord, overflow_corrected(0177777 & c(RegL)));
-        c(RegL) = sign_extend(Operand16);
+          state, where_word, overflow_corrected(0177777 & c(RegL)));
+        c(RegL) = sign_extend(pperand_16);
       }
       break;
     case 024: // INCR.
@@ -2719,14 +2719,14 @@ int agc_engine(agc_state_t* State)
       // INCR instruction (2 MCT).
       {
         int Sum;
-        WhereWord = FindMemoryWord(State, Address10);
-        if(Address10 < REG16)
-          c(Address10) = add_sp_16(AGC_P1, 0177777 & c(Address10));
+        where_word = FindMemoryWord(state, address_10);
+        if(address_10 < REG16)
+          c(address_10) = add_sp_16(AGC_P1, 0177777 & c(address_10));
         else
         {
-          Sum = add_sp_16(AGC_P1, sign_extend(*WhereWord));
-          AssignFromPointer(State, WhereWord, overflow_corrected(Sum));
-          InterruptRequests(State, Address10, Sum);
+          Sum = add_sp_16(AGC_P1, sign_extend(*where_word));
+          AssignFromPointer(state, where_word, overflow_corrected(Sum));
+          InterruptRequests(state, address_10, Sum);
         }
       }
       break;
@@ -2734,21 +2734,21 @@ int agc_engine(agc_state_t* State)
     case 027:
       // ADS instruction (2 MCT).
       {
-        WhereWord = FindMemoryWord(State, Address10);
-        if(IsA(Address10))
-          Accumulator = add_sp_16(Accumulator, Accumulator);
-        else if(Address10 < REG16)
-          Accumulator = add_sp_16(Accumulator, 0177777 & c(Address10));
+        where_word = FindMemoryWord(state, address_10);
+        if(IsA(address_10))
+          acc = add_sp_16(acc, acc);
+        else if(address_10 < REG16)
+          acc = add_sp_16(acc, 0177777 & c(address_10));
         else
-          Accumulator = add_sp_16(Accumulator, sign_extend(*WhereWord));
-        c(RegA) = Accumulator;
-        if(IsA(Address10))
+          acc = add_sp_16(acc, sign_extend(*where_word));
+        c(RegA) = acc;
+        if(IsA(address_10))
         {
         }
-        else if(Address10 < REG16)
-          c(Address10) = Accumulator;
+        else if(address_10 < REG16)
+          c(address_10) = acc;
         else
-          AssignFromPointer(State, WhereWord, overflow_corrected(Accumulator));
+          AssignFromPointer(state, where_word, overflow_corrected(acc));
       }
       break;
     case 030: // CA
@@ -2759,17 +2759,17 @@ int agc_engine(agc_state_t* State)
     case 035:
     case 036:
     case 037:
-      if(IsA(Address12)) // NOOP
+      if(IsA(address_12)) // NOOP
         break;
-      if(Address12 < REG16)
+      if(address_12 < REG16)
       {
-        c(RegA) = c(Address12);
+        c(RegA) = c(address_12);
         ;
         break;
       }
-      WhereWord = FindMemoryWord(State, Address12);
-      c(RegA)   = sign_extend(*WhereWord);
-      AssignFromPointer(State, WhereWord, *WhereWord);
+      where_word = FindMemoryWord(state, address_12);
+      c(RegA)   = sign_extend(*where_word);
+      AssignFromPointer(state, where_word, *where_word);
       break;
     case 040: // CS
     case 041:
@@ -2779,33 +2779,33 @@ int agc_engine(agc_state_t* State)
     case 045:
     case 046:
     case 047:
-      TCTransient = 1; // CS causes transients on the TC0 line
+      tc_transient = 1; // CS causes transients on the TC0 line
 
-      if(IsA(Address12)) // COM
+      if(IsA(address_12)) // COM
       {
-        c(RegA) = ~Accumulator;
+        c(RegA) = ~acc;
         ;
         break;
       }
-      if(Address12 < REG16)
+      if(address_12 < REG16)
       {
-        c(RegA) = ~c(Address12);
+        c(RegA) = ~c(address_12);
         break;
       }
-      WhereWord = FindMemoryWord(State, Address12);
-      c(RegA)   = sign_extend(NegateSP(*WhereWord));
-      AssignFromPointer(State, WhereWord, *WhereWord);
+      where_word = FindMemoryWord(state, address_12);
+      c(RegA)   = sign_extend(NegateSP(*where_word));
+      AssignFromPointer(state, where_word, *where_word);
       break;
     case 050: // INDEX
     case 051:
-      if(Address10 == 017)
+      if(address_10 == 017)
         goto Resume;
-      if(Address10 < REG16)
-        State->index_value = overflow_corrected(c(Address10));
+      if(address_10 < REG16)
+        state->index_value = overflow_corrected(c(address_10));
       else
       {
-        WhereWord          = FindMemoryWord(State, Address10);
-        State->index_value = *WhereWord;
+        where_word          = FindMemoryWord(state, address_10);
+        state->index_value = *where_word;
       }
       break;
     case 0150: // INDEX (continued)
@@ -2816,112 +2816,112 @@ int agc_engine(agc_state_t* State)
     case 0155:
     case 0156:
     case 0157:
-      if(Address12 == 017 << 1)
+      if(address_12 == 017 << 1)
       {
       Resume:
-        State->next_z                 = c(RegZRUPT) - 1;
-        State->in_isr                 = 0;
-        State->substitute_instruction = 1;
+        state->next_z                 = c(RegZRUPT) - 1;
+        state->in_isr                 = 0;
+        state->substitute_instruction = 1;
       }
       else
       {
-        if(Address12 < REG16)
-          State->index_value = overflow_corrected(c(Address12));
+        if(address_12 < REG16)
+          state->index_value = overflow_corrected(c(address_12));
         else
         {
-          WhereWord          = FindMemoryWord(State, Address12);
-          State->index_value = *WhereWord;
+          where_word          = FindMemoryWord(state, address_12);
+          state->index_value = *where_word;
         }
         KeepExtraCode = 1;
       }
       break;
     case 052: // DXCH
     case 053:
-      TCTransient = 1; // DXCH causes transients on the TCF0 line
+      tc_transient = 1; // DXCH causes transients on the TCF0 line
 
       // Remember, in the following comparisons, that the address is pre-incremented.
-      if(IsL(Address10))
+      if(IsL(address_10))
       {
         c(RegL) = sign_extend(overflow_corrected(c(RegL)));
         break;
       }
-      WhereWord = FindMemoryWord(State, Address10);
+      where_word = FindMemoryWord(state, address_10);
       // Topmost word.
-      if(Address10 < REG16)
+      if(address_10 < REG16)
       {
-        Operand16    = c(Address10);
-        c(Address10) = c(RegL);
-        c(RegL)      = Operand16;
-        if(Address10 == RegZ)
-          State->next_z = c(RegZ);
+        pperand_16    = c(address_10);
+        c(address_10) = c(RegL);
+        c(RegL)      = pperand_16;
+        if(address_10 == RegZ)
+          state->next_z = c(RegZ);
       }
       else
       {
-        Operand16 = sign_extend(*WhereWord);
-        AssignFromPointer(State, WhereWord, overflow_corrected(c(RegL)));
-        c(RegL) = Operand16;
+        pperand_16 = sign_extend(*where_word);
+        AssignFromPointer(state, where_word, overflow_corrected(c(RegL)));
+        c(RegL) = pperand_16;
       }
       c(RegL) = sign_extend(overflow_corrected(c(RegL)));
       // Bottom word.
-      if(Address10 < REG16 + 1)
+      if(address_10 < REG16 + 1)
       {
-        Operand16        = c(Address10 - 1);
-        c(Address10 - 1) = c(RegA);
-        c(RegA)          = Operand16;
-        if(Address10 == RegZ + 1)
-          State->next_z = c(RegZ);
+        pperand_16        = c(address_10 - 1);
+        c(address_10 - 1) = c(RegA);
+        c(RegA)          = pperand_16;
+        if(address_10 == RegZ + 1)
+          state->next_z = c(RegZ);
       }
       else
       {
-        Operand16 = sign_extend(WhereWord[-1]);
-        AssignFromPointer(State, WhereWord - 1, overflow_corrected(c(RegA)));
-        c(RegA) = Operand16;
+        pperand_16 = sign_extend(where_word[-1]);
+        AssignFromPointer(state, where_word - 1, overflow_corrected(c(RegA)));
+        c(RegA) = pperand_16;
       }
       break;
     case 054: // TS
     case 055:
-      TCTransient = 1;   // TS causes transients on the TCF0 line
-      if(IsA(Address10)) // OVSK
+      tc_transient = 1;   // TS causes transients on the TCF0 line
+      if(IsA(address_10)) // OVSK
       {
-        if(Overflow)
-          State->next_z += AGC_P1;
+        if(ovf)
+          state->next_z += AGC_P1;
       }
-      else if(IsZ(Address10)) // TCAA
+      else if(IsZ(address_10)) // TCAA
       {
-        State->next_z = (077777 & Accumulator);
-        if(Overflow)
-          c(RegA) = sign_extend(ValueOverflowed(Accumulator));
+        state->next_z = (077777 & acc);
+        if(ovf)
+          c(RegA) = sign_extend(ValueOverflowed(acc));
       }
       else // Not OVSK or TCAA.
       {
-        WhereWord = FindMemoryWord(State, Address10);
-        if(Address10 < REG16)
-          c(Address10) = Accumulator;
+        where_word = FindMemoryWord(state, address_10);
+        if(address_10 < REG16)
+          c(address_10) = acc;
         else
-          AssignFromPointer(State, WhereWord, overflow_corrected(Accumulator));
-        if(Overflow)
+          AssignFromPointer(state, where_word, overflow_corrected(acc));
+        if(ovf)
         {
-          c(RegA) = sign_extend(ValueOverflowed(Accumulator));
-          State->next_z += AGC_P1;
+          c(RegA) = sign_extend(ValueOverflowed(acc));
+          state->next_z += AGC_P1;
         }
       }
       break;
     case 056: // XCH
     case 057:
-      TCTransient = 1; // XCH causes transients on the TCF0 line
-      if(IsA(Address10))
+      tc_transient = 1; // XCH causes transients on the TCF0 line
+      if(IsA(address_10))
         break;
-      if(Address10 < REG16)
+      if(address_10 < REG16)
       {
-        c(RegA)      = c(Address10);
-        c(Address10) = Accumulator;
-        if(Address10 == RegZ)
-          State->next_z = c(RegZ);
+        c(RegA)      = c(address_10);
+        c(address_10) = acc;
+        if(address_10 == RegZ)
+          state->next_z = c(RegZ);
         break;
       }
-      WhereWord = FindMemoryWord(State, Address10);
-      c(RegA)   = sign_extend(*WhereWord);
-      AssignFromPointer(State, WhereWord, overflow_corrected(Accumulator));
+      where_word = FindMemoryWord(state, address_10);
+      c(RegA)   = sign_extend(*where_word);
+      AssignFromPointer(state, where_word, overflow_corrected(acc));
       break;
     case 060: // AD
     case 061:
@@ -2931,17 +2931,17 @@ int agc_engine(agc_state_t* State)
     case 065:
     case 066:
     case 067:
-      if(IsA(Address12)) // DOUBLE
-        Accumulator = add_sp_16(Accumulator, Accumulator);
-      else if(Address12 < REG16)
-        Accumulator = add_sp_16(Accumulator, 0177777 & c(Address12));
+      if(IsA(address_12)) // DOUBLE
+        acc = add_sp_16(acc, acc);
+      else if(address_12 < REG16)
+        acc = add_sp_16(acc, 0177777 & c(address_12));
       else
       {
-        WhereWord   = FindMemoryWord(State, Address12);
-        Accumulator = add_sp_16(Accumulator, sign_extend(*WhereWord));
-        AssignFromPointer(State, WhereWord, *WhereWord);
+        where_word   = FindMemoryWord(state, address_12);
+        acc = add_sp_16(acc, sign_extend(*where_word));
+        AssignFromPointer(state, where_word, *where_word);
       }
-      c(RegA) = Accumulator;
+      c(RegA) = acc;
       break;
     case 070: // MASK
     case 071:
@@ -2951,77 +2951,77 @@ int agc_engine(agc_state_t* State)
     case 075:
     case 076:
     case 077:
-      if(Address12 < REG16)
-        c(RegA) = Accumulator & c(Address12);
+      if(address_12 < REG16)
+        c(RegA) = acc & c(address_12);
       else
       {
-        c(RegA)   = overflow_corrected(Accumulator);
-        WhereWord = FindMemoryWord(State, Address12);
-        c(RegA)   = sign_extend(c(RegA) & *WhereWord);
+        c(RegA)   = overflow_corrected(acc);
+        where_word = FindMemoryWord(state, address_12);
+        c(RegA)   = sign_extend(c(RegA) & *where_word);
       }
       break;
     case 0100: // READ
-      if(IsL(Address9) || IsQ(Address9))
-        c(RegA) = c(Address9);
+      if(IsL(address_9) || IsQ(address_9))
+        c(RegA) = c(address_9);
       else
-        c(RegA) = sign_extend(read_io(State, Address9));
+        c(RegA) = sign_extend(read_io(state, address_9));
       break;
     case 0101: // WRITE
-      if(IsL(Address9) || IsQ(Address9))
-        c(Address9) = Accumulator;
+      if(IsL(address_9) || IsQ(address_9))
+        c(address_9) = acc;
       else
-        cpu_write_io(State, Address9, overflow_corrected(Accumulator));
+        cpu_write_io(state, address_9, overflow_corrected(acc));
       break;
     case 0102: // RAND
-      if(IsL(Address9) || IsQ(Address9))
-        c(RegA) = (Accumulator & c(Address9));
+      if(IsL(address_9) || IsQ(address_9))
+        c(RegA) = (acc & c(address_9));
       else
       {
-        Operand16 = overflow_corrected(Accumulator);
-        Operand16 &= read_io(State, Address9);
-        c(RegA) = sign_extend(Operand16);
+        pperand_16 = overflow_corrected(acc);
+        pperand_16 &= read_io(state, address_9);
+        c(RegA) = sign_extend(pperand_16);
       }
       break;
     case 0103: // WAND
-      if(IsL(Address9) || IsQ(Address9))
-        c(RegA) = c(Address9) = (Accumulator & c(Address9));
+      if(IsL(address_9) || IsQ(address_9))
+        c(RegA) = c(address_9) = (acc & c(address_9));
       else
       {
-        Operand16 = overflow_corrected(Accumulator);
-        Operand16 &= read_io(State, Address9);
-        cpu_write_io(State, Address9, Operand16);
-        c(RegA) = sign_extend(Operand16);
+        pperand_16 = overflow_corrected(acc);
+        pperand_16 &= read_io(state, address_9);
+        cpu_write_io(state, address_9, pperand_16);
+        c(RegA) = sign_extend(pperand_16);
       }
       break;
     case 0104: // ROR
-      if(IsL(Address9) || IsQ(Address9))
-        c(RegA) = (Accumulator | c(Address9));
+      if(IsL(address_9) || IsQ(address_9))
+        c(RegA) = (acc | c(address_9));
       else
       {
-        Operand16 = overflow_corrected(Accumulator);
-        Operand16 |= read_io(State, Address9);
-        c(RegA) = sign_extend(Operand16);
+        pperand_16 = overflow_corrected(acc);
+        pperand_16 |= read_io(state, address_9);
+        c(RegA) = sign_extend(pperand_16);
       }
       break;
     case 0105: // WOR
-      if(IsL(Address9) || IsQ(Address9))
-        c(RegA) = c(Address9) = (Accumulator | c(Address9));
+      if(IsL(address_9) || IsQ(address_9))
+        c(RegA) = c(address_9) = (acc | c(address_9));
       else
       {
-        Operand16 = overflow_corrected(Accumulator);
-        Operand16 |= read_io(State, Address9);
-        cpu_write_io(State, Address9, Operand16);
-        c(RegA) = sign_extend(Operand16);
+        pperand_16 = overflow_corrected(acc);
+        pperand_16 |= read_io(state, address_9);
+        cpu_write_io(state, address_9, pperand_16);
+        c(RegA) = sign_extend(pperand_16);
       }
       break;
     case 0106: // RXOR
-      if(IsL(Address9) || IsQ(Address9))
-        c(RegA) = (Accumulator ^ c(Address9));
+      if(IsL(address_9) || IsQ(address_9))
+        c(RegA) = (acc ^ c(address_9));
       else
       {
-        Operand16 = overflow_corrected(Accumulator);
-        Operand16 ^= read_io(State, Address9);
-        c(RegA) = sign_extend(Operand16);
+        pperand_16 = overflow_corrected(acc);
+        pperand_16 ^= read_io(state, address_9);
+        c(RegA) = sign_extend(pperand_16);
       }
       break;
     case 0107: // EDRUPT
@@ -3034,7 +3034,7 @@ int agc_engine(agc_state_t* State)
       int16_t AccPair[2], AbsA, AbsL, AbsK, Div16;
       int     Dividend, Divisor, Quotient, Remainder;
 
-      AccPair[0] = overflow_corrected(Accumulator);
+      AccPair[0] = overflow_corrected(acc);
       AccPair[1] = c(RegL);
       Dividend   = SpToDecent(&AccPair[1]);
       DecentToSp(Dividend, &AccPair[1]);
@@ -3042,7 +3042,7 @@ int agc_engine(agc_state_t* State)
       AbsA = AbsSP(AccPair[0]);
       AbsL = AbsSP(AccPair[1]);
 
-      if(IsA(Address10))
+      if(IsA(address_10))
       {
         // DV modifies A before reading the divisor, so in this
         // case the divisor is -|A|.
@@ -3050,7 +3050,7 @@ int agc_engine(agc_state_t* State)
         if((c(RegA) & 0100000) == 0)
           Div16 = 0177777 & ~Div16;
       }
-      else if(IsL(Address10))
+      else if(IsL(address_10))
       {
         // DV modifies L before reading the divisor. L is first
         // negated if the quotient A,L is negative according to
@@ -3061,7 +3061,7 @@ int agc_engine(agc_state_t* State)
         // Make sure to account for L's built-in overflow correction
         Div16 = sign_extend(overflow_corrected(add_sp_16((uint16_t)Div16, 040000)));
       }
-      else if(IsZ(Address10))
+      else if(IsZ(address_10))
       {
         // DV modifies Z before reading the divisor. If the
         // quotient A,L is negative according to DV sign rules,
@@ -3070,10 +3070,10 @@ int agc_engine(agc_state_t* State)
         if(((AbsA == 0) && (0100000 & c(RegL))) || ((AbsA != 0) && (0100000 & c(RegA))))
           Div16 |= 0100000;
       }
-      else if(Address10 < REG16)
-        Div16 = c(Address10);
+      else if(address_10 < REG16)
+        Div16 = c(address_10);
       else
-        Div16 = sign_extend(*FindMemoryWord(State, Address10));
+        Div16 = sign_extend(*FindMemoryWord(state, address_10));
 
       // Fetch the values;
       AbsK = AbsSP(overflow_corrected(Div16));
@@ -3083,7 +3083,7 @@ int agc_engine(agc_state_t* State)
         // overflow. In both cases, we fall back on a slower simulation
         // of the hardware registers, which will produce "total nonsense"
         // (that nonetheless will match what the actual AGC would have gotten).
-        SimulateDV(State, Div16);
+        SimulateDV(state, Div16);
       }
       else if(AbsA == 0 && AbsL == 0)
       {
@@ -3092,33 +3092,33 @@ int agc_engine(agc_state_t* State)
         if((040000 & c(RegL)) == (040000 & overflow_corrected(Div16)))
         {
           if(AbsK == 0)
-            Operand16 = 037777; // Max positive value.
+            pperand_16 = 037777; // Max positive value.
           else
-            Operand16 = AGC_P0;
+            pperand_16 = AGC_P0;
         }
         else
         {
           if(AbsK == 0)
-            Operand16 = (077777 & ~037777); // Max negative value.
+            pperand_16 = (077777 & ~037777); // Max negative value.
           else
-            Operand16 = AGC_M0;
+            pperand_16 = AGC_M0;
         }
 
-        c(RegA) = sign_extend(Operand16);
+        c(RegA) = sign_extend(pperand_16);
       }
       else if(AbsA == AbsK && AbsL == AGC_P0)
       {
         // The divisor is equal to the dividend.
         if(AccPair[0] == overflow_corrected(Div16)) // Signs agree?
         {
-          Operand16 = 037777; // Max positive value.
+          pperand_16 = 037777; // Max positive value.
         }
         else
         {
-          Operand16 = (077777 & ~037777); // Max negative value.
+          pperand_16 = (077777 & ~037777); // Max negative value.
         }
         c(RegL) = sign_extend(AccPair[0]);
-        c(RegA) = sign_extend(Operand16);
+        c(RegA) = sign_extend(pperand_16);
       }
       else
       {
@@ -3156,10 +3156,10 @@ int agc_engine(agc_state_t* State)
     case 0117:
       //Operand16 = OverflowCorrected (Accumulator);
       //if (Operand16 == AGC_P0 || Operand16 == AGC_M0)
-      if(Accumulator == 0 || Accumulator == 0177777)
+      if(acc == 0 || acc == 0177777)
       {
-        State->next_z = Address12;
-        JustTookBZF   = 1;
+        state->next_z = address_12;
+        just_took_bzf   = 1;
       }
       break;
     case 0120: // MSU
@@ -3167,16 +3167,16 @@ int agc_engine(agc_state_t* State)
     {
       unsigned ui, uj;
       int      diff;
-      WhereWord = FindMemoryWord(State, Address10);
-      if(Address10 < REG16)
+      where_word = FindMemoryWord(state, address_10);
+      if(address_10 < REG16)
       {
-        ui = 0177777 & Accumulator;
-        uj = 0177777 & ~c(Address10);
+        ui = 0177777 & acc;
+        uj = 0177777 & ~c(address_10);
       }
       else
       {
-        ui = (077777 & overflow_corrected(Accumulator));
-        uj = (077777 & ~*WhereWord);
+        ui = (077777 & overflow_corrected(acc));
+        uj = (077777 & ~*where_word);
       }
       diff = ui + uj + 1; // Two's complement subtraction -- add the complement plus one
       // The AGC sign-extends the result from A15 to A16, then checks A16 to see if
@@ -3186,37 +3186,37 @@ int agc_engine(agc_state_t* State)
         diff |= 0100000; // Sign-extend A15 into A16
         diff--;          // Subtract one from the result
       }
-      if(IsQ(Address10))
+      if(IsQ(address_10))
         c(RegA) = 0177777 & diff;
       else
       {
-        Operand16 = (077777 & diff);
-        c(RegA)   = sign_extend(Operand16);
+        pperand_16 = (077777 & diff);
+        c(RegA)   = sign_extend(pperand_16);
       }
-      if(Address10 >= 020 && Address10 <= 023)
-        AssignFromPointer(State, WhereWord, *WhereWord);
+      if(address_10 >= 020 && address_10 <= 023)
+        AssignFromPointer(state, where_word, *where_word);
     }
     break;
     case 0122: // QXCH
     case 0123:
-      if(IsQ(Address10))
+      if(IsQ(address_10))
         break;
-      if(IsReg(Address10, RegZERO)) // ZQ
+      if(IsReg(address_10, RegZERO)) // ZQ
         c(RegQ) = AGC_P0;
-      else if(Address10 < REG16)
+      else if(address_10 < REG16)
       {
-        Operand16    = c(RegQ);
-        c(RegQ)      = c(Address10);
-        c(Address10) = Operand16;
-        if(Address10 == RegZ)
-          State->next_z = c(RegZ);
+        pperand_16    = c(RegQ);
+        c(RegQ)      = c(address_10);
+        c(address_10) = pperand_16;
+        if(address_10 == RegZ)
+          state->next_z = c(RegZ);
       }
       else
       {
-        WhereWord = FindMemoryWord(State, Address10);
-        Operand16 = overflow_corrected(c(RegQ));
-        c(RegQ)   = sign_extend(*WhereWord);
-        AssignFromPointer(State, WhereWord, Operand16);
+        where_word = FindMemoryWord(state, address_10);
+        pperand_16 = overflow_corrected(c(RegQ));
+        c(RegQ)   = sign_extend(*where_word);
+        AssignFromPointer(state, where_word, pperand_16);
       }
       break;
     case 0124: // AUG
@@ -3224,23 +3224,23 @@ int agc_engine(agc_state_t* State)
     {
       int Sum;
       int Operand16, Increment;
-      WhereWord = FindMemoryWord(State, Address10);
-      if(Address10 < REG16)
-        Operand16 = c(Address10);
+      where_word = FindMemoryWord(state, address_10);
+      if(address_10 < REG16)
+        Operand16 = c(address_10);
       else
-        Operand16 = sign_extend(*WhereWord);
+        Operand16 = sign_extend(*where_word);
       Operand16 &= 0177777;
       if(0 == (0100000 & Operand16))
         Increment = AGC_P1;
       else
         Increment = sign_extend(AGC_M1);
       Sum = add_sp_16(0177777 & Increment, 0177777 & Operand16);
-      if(Address10 < REG16)
-        c(Address10) = Sum;
+      if(address_10 < REG16)
+        c(address_10) = Sum;
       else
       {
-        AssignFromPointer(State, WhereWord, overflow_corrected(Sum));
-        InterruptRequests(State, Address10, Sum);
+        AssignFromPointer(state, where_word, overflow_corrected(Sum));
+        InterruptRequests(state, address_10, Sum);
       }
     }
     break;
@@ -3249,11 +3249,11 @@ int agc_engine(agc_state_t* State)
     {
       int Sum;
       int Operand16, Increment;
-      WhereWord = FindMemoryWord(State, Address10);
-      if(Address10 < REG16)
-        Operand16 = c(Address10);
+      where_word = FindMemoryWord(state, address_10);
+      if(address_10 < REG16)
+        Operand16 = c(address_10);
       else
-        Operand16 = sign_extend(*WhereWord);
+        Operand16 = sign_extend(*where_word);
       Operand16 &= 0177777;
       if(Operand16 == AGC_P0 || Operand16 == sign_extend(AGC_M0))
         break;
@@ -3262,10 +3262,10 @@ int agc_engine(agc_state_t* State)
       else
         Increment = AGC_P1;
       Sum = add_sp_16(0177777 & Increment, 0177777 & Operand16);
-      if(Address10 < REG16)
-        c(Address10) = Sum;
+      if(address_10 < REG16)
+        c(address_10) = Sum;
       else
-        AssignFromPointer(State, WhereWord, overflow_corrected(Sum));
+        AssignFromPointer(state, where_word, overflow_corrected(Sum));
     }
     break;
     case 0130: // DCA
@@ -3276,27 +3276,27 @@ int agc_engine(agc_state_t* State)
     case 0135:
     case 0136:
     case 0137:
-      if(IsL(Address12))
+      if(IsL(address_12))
       {
         c(RegL) = sign_extend(overflow_corrected(c(RegL)));
         break;
       }
-      WhereWord = FindMemoryWord(State, Address12);
+      where_word = FindMemoryWord(state, address_12);
       // Do topmost word first.
-      if(Address12 < REG16)
-        c(RegL) = c(Address12);
+      if(address_12 < REG16)
+        c(RegL) = c(address_12);
       else
-        c(RegL) = sign_extend(*WhereWord);
+        c(RegL) = sign_extend(*where_word);
       c(RegL) = sign_extend(overflow_corrected(c(RegL)));
       // Now do bottom word.
-      if(Address12 < REG16 + 1)
-        c(RegA) = c(Address12 - 1);
+      if(address_12 < REG16 + 1)
+        c(RegA) = c(address_12 - 1);
       else
-        c(RegA) = sign_extend(WhereWord[-1]);
-      if(Address12 >= 020 && Address12 <= 023)
-        AssignFromPointer(State, WhereWord, WhereWord[0]);
-      if(Address12 >= 020 + 1 && Address12 <= 023 + 1)
-        AssignFromPointer(State, WhereWord - 1, WhereWord[-1]);
+        c(RegA) = sign_extend(where_word[-1]);
+      if(address_12 >= 020 && address_12 <= 023)
+        AssignFromPointer(state, where_word, where_word[0]);
+      if(address_12 >= 020 + 1 && address_12 <= 023 + 1)
+        AssignFromPointer(state, where_word - 1, where_word[-1]);
       break;
     case 0140: // DCS
     case 0141:
@@ -3306,45 +3306,45 @@ int agc_engine(agc_state_t* State)
     case 0145:
     case 0146:
     case 0147:
-      if(IsL(Address12)) // DCOM
+      if(IsL(address_12)) // DCOM
       {
-        c(RegA) = ~Accumulator;
+        c(RegA) = ~acc;
         c(RegL) = ~c(RegL);
         c(RegL) = sign_extend(overflow_corrected(c(RegL)));
         break;
       }
-      WhereWord = FindMemoryWord(State, Address12);
+      where_word = FindMemoryWord(state, address_12);
       // Do topmost word first.
-      if(Address12 < REG16)
-        c(RegL) = ~c(Address12);
+      if(address_12 < REG16)
+        c(RegL) = ~c(address_12);
       else
-        c(RegL) = ~sign_extend(*WhereWord);
+        c(RegL) = ~sign_extend(*where_word);
       c(RegL) = sign_extend(overflow_corrected(c(RegL)));
       // Now do bottom word.
-      if(Address12 < REG16 + 1)
-        c(RegA) = ~c(Address12 - 1);
+      if(address_12 < REG16 + 1)
+        c(RegA) = ~c(address_12 - 1);
       else
-        c(RegA) = ~sign_extend(WhereWord[-1]);
-      if(Address12 >= 020 && Address12 <= 023)
-        AssignFromPointer(State, WhereWord, WhereWord[0]);
-      if(Address12 >= 020 + 1 && Address12 <= 023 + 1)
-        AssignFromPointer(State, WhereWord - 1, WhereWord[-1]);
+        c(RegA) = ~sign_extend(where_word[-1]);
+      if(address_12 >= 020 && address_12 <= 023)
+        AssignFromPointer(state, where_word, where_word[0]);
+      if(address_12 >= 020 + 1 && address_12 <= 023 + 1)
+        AssignFromPointer(state, where_word - 1, where_word[-1]);
       break;
     // For 0150..0157 see the INDEX instruction above.
     case 0160: // SU
     case 0161:
-      if(IsA(Address10))
-        Accumulator = sign_extend(AGC_M0);
-      else if(Address10 < REG16)
-        Accumulator = add_sp_16(Accumulator, 0177777 & ~c(Address10));
+      if(IsA(address_10))
+        acc = sign_extend(AGC_M0);
+      else if(address_10 < REG16)
+        acc = add_sp_16(acc, 0177777 & ~c(address_10));
       else
       {
-        WhereWord = FindMemoryWord(State, Address10);
-        Accumulator =
-          add_sp_16(Accumulator, sign_extend(NegateSP(*WhereWord)));
-        AssignFromPointer(State, WhereWord, *WhereWord);
+        where_word = FindMemoryWord(state, address_10);
+        acc =
+          add_sp_16(acc, sign_extend(NegateSP(*where_word)));
+        AssignFromPointer(state, where_word, *where_word);
       }
-      c(RegA) = Accumulator;
+      c(RegA) = acc;
       break;
     case 0162: // BZMF
     case 0163:
@@ -3354,10 +3354,10 @@ int agc_engine(agc_state_t* State)
     case 0167:
       //Operand16 = OverflowCorrected (Accumulator);
       //if (Operand16 == AGC_P0 || IsNegativeSP (Operand16))
-      if(Accumulator == 0 || 0 != (Accumulator & 0100000))
+      if(acc == 0 || 0 != (acc & 0100000))
       {
-        State->next_z = Address12;
-        JustTookBZMF  = 1;
+        state->next_z = address_12;
+        just_took_bzmf  = 1;
       }
       break;
     case 0170: // MP
@@ -3376,17 +3376,17 @@ int agc_engine(agc_state_t* State)
       // FIX ME: Accumulator is overflow-corrected before SQUARE.
       int16_t MsWord, LsWord, OtherOperand16;
       int     Product;
-      WhereWord = FindMemoryWord(State, Address12);
-      Operand16 = overflow_corrected(Accumulator);
-      if(Address12 < REG16)
-        OtherOperand16 = overflow_corrected(c(Address12));
+      where_word = FindMemoryWord(state, address_12);
+      pperand_16 = overflow_corrected(acc);
+      if(address_12 < REG16)
+        OtherOperand16 = overflow_corrected(c(address_12));
       else
-        OtherOperand16 = *WhereWord;
+        OtherOperand16 = *where_word;
       if(OtherOperand16 == AGC_P0 || OtherOperand16 == AGC_M0)
         MsWord = LsWord = AGC_P0;
-      else if(Operand16 == AGC_P0 || Operand16 == AGC_M0)
+      else if(pperand_16 == AGC_P0 || pperand_16 == AGC_M0)
       {
-        if((Operand16 == AGC_P0 && 0 != (040000 & OtherOperand16)) || (Operand16 == AGC_M0 && 0 == (040000 & OtherOperand16)))
+        if((pperand_16 == AGC_P0 && 0 != (040000 & OtherOperand16)) || (pperand_16 == AGC_M0 && 0 == (040000 & OtherOperand16)))
           MsWord = LsWord = AGC_M0;
         else
           MsWord = LsWord = AGC_P0;
@@ -3394,7 +3394,7 @@ int agc_engine(agc_state_t* State)
       else
       {
         int16_t WordPair[2];
-        Product = agc2cpu(sign_extend(Operand16))
+        Product = agc2cpu(sign_extend(pperand_16))
           * agc2cpu(sign_extend(OtherOperand16));
         Product = cpu2agc2(Product);
         // Sign-extend, because it's needed for DecentToSp.
@@ -3417,25 +3417,25 @@ int agc_engine(agc_state_t* State)
 
 AllDone:
   // All done!
-  if(!State->pend_flag)
+  if(!state->pend_flag)
   {
     c(RegZERO)             = AGC_P0;
-    State->inputChannel[7] = State->output_channel_7 &= 0160;
-    c(RegZ)                = State->next_z;
+    state->inputChannel[7] = state->output_channel_7 &= 0160;
+    c(RegZ)                = state->next_z;
     // In all cases except for RESUME, Z will be truncated to
     // 12 bits between instructions
-    if(!State->substitute_instruction)
+    if(!state->substitute_instruction)
       c(RegZ) = c(RegZ) & 07777;
     if(!KeepExtraCode)
-      State->extra_code = 0;
+      state->extra_code = 0;
     // Values written to EB and FB are automatically mirrored to BB,
     // and vice versa.
-    if(CurrentBB != c(RegBB))
+    if(bb != c(RegBB))
     {
       c(RegFB) = (c(RegBB) & 076000);
       c(RegEB) = (c(RegBB) & 07) << 8;
     }
-    else if(CurrentEB != c(RegEB) || CurrentFB != c(RegFB))
+    else if(eb != c(RegEB) || fb != c(RegFB))
       c(RegBB) = (c(RegFB) & 076000) | ((c(RegEB) & 03400) >> 8);
     c(RegEB) &= 03400;
     c(RegFB) &= 076000;
@@ -3445,19 +3445,19 @@ AllDone:
     c(RegL) = sign_extend(overflow_corrected(c(RegL)));
 
     // Check ISR status, and clear the Rupt Lock flags accordingly
-    if(State->in_isr)
-      State->no_rupt = 0;
+    if(state->in_isr)
+      state->no_rupt = 0;
     else
-      State->rupt_lock = 0;
+      state->rupt_lock = 0;
 
     // Update TC Trap flags according to the instruction we just executed
-    if(ExecutedTC || TCTransient)
-      State->no_tc = 0;
-    if(!ExecutedTC)
-      State->tc_trap = 0;
+    if(executed_tc || tc_transient)
+      state->no_tc = 0;
+    if(!executed_tc)
+      state->tc_trap = 0;
 
-    State->took_bzf  = JustTookBZF;
-    State->took_bzmf = JustTookBZMF;
+    state->took_bzf  = just_took_bzf;
+    state->took_bzmf = just_took_bzmf;
   }
   return (0);
 }
