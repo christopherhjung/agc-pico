@@ -44,33 +44,8 @@
 
 #define CLI_E_OK 0
 #define CLI_E_UNKOWNTOKEN 1
+#include "core/agc_simulator.h"
 
-typedef struct
-{
-  char* core;
-  char* resume;
-  char* cdu_log;
-  char* symtab;
-  char* directory;
-  char* cd;
-  char* cfg;
-  char* fromfile;
-  int   port;
-  int   dump_time;
-  int   debug_dsky;
-  int   debug_deda;
-  int   deda_quiet;
-  int   inhibit_alarms;
-  int   show_alarms;
-  int   quiet;
-  int   fullname;
-  int   debug;
-  int   interlace;
-  int	resumed;
-  int	version;
-  int	initializeSunburst37;
-  int	no_resume;
-} Options_t;
 
 extern Options_t* CliParseArguments(int argc, char *argv[]);
 

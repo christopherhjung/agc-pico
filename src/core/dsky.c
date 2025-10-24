@@ -1,12 +1,14 @@
-#include "dsky.h"
+#include "core/dsky.h"
 
+
+#include <string.h>
+#include "core/ringbuffer.h"
+#include "agc_engine.h"
+
+#if false
 #include <sys/fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-
-#include <string.h>
-#include "ringbuffer.h"
-#include "agc_engine.h"
 
 int kbhit() {
   struct termios oldt, newt;
@@ -33,6 +35,9 @@ int kbhit() {
   return 0;
 }
 
+#endif
+
+
 
 void dsky_io (dsky_t *dsky)
 {
@@ -56,6 +61,7 @@ void dsky_io (dsky_t *dsky)
     }
   }
 
+#if false
   if (kbhit())
   {
     int c = getchar();
@@ -81,6 +87,8 @@ void dsky_io (dsky_t *dsky)
         dsky_keyboard_press(c - '1' + KEY_ONE);
     }
   }
+#endif
+
 }
 
 void dsky_keyboard_press (Keyboard Keycode)

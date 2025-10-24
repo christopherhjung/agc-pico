@@ -44,27 +44,7 @@
 		04/24/09 RSB	Added #include for pthreads.h.
 */
 
-#include "agc_cli.h"
-#include "agc_simulator.h"
-
-#include <termios.h>
-
-// Set terminal to raw mode (no buffering, no enter needed)
-void set_conio_terminal_mode() {
-  struct termios new_termios;
-
-  tcgetattr(0, &new_termios);  // get current terminal state
-  new_termios.c_lflag &= ~(ICANON | ECHO); // disable canonical mode & echo
-  tcsetattr(0, TCSANOW, &new_termios);
-}
-
-// Restore terminal to normal mode
-void reset_terminal_mode() {
-  struct termios term;
-  tcgetattr(0, &term);
-  term.c_lflag |= (ICANON | ECHO);
-  tcsetattr(0, TCSANOW, &term);
-}
+#include <core/agc_simulator.h>
 
 /**
 The AGC main function from here the Command Line is parsed, the
@@ -72,15 +52,18 @@ Simulator is initialized and subsequently executed.
 */
 int main (int argc, char *argv[])
 {
+#if false
   set_conio_terminal_mode();
+#endif
 
 	/* Declare Options and parse the command line */
-	Options_t *Options = CliParseArguments(argc, argv);
+	Options_t Options;
 
 	/* Initialize the Simulator and debugger if enabled
 	 * if the initialization fails or Options is NULL then the simulator will
 	 * return a non zero value and subsequently bail and exit the program */
-	if (SimInitialize(Options) == SIM_E_OK) SimExecute();
+	if (SimInitialize(&Options) == SIM_E_OK)
+	  SimExecute();
 
 	return (0);
 }

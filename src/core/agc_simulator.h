@@ -54,7 +54,7 @@
 #include "agc_engine.h"
 #include "yaAGC.h"
 
-#ifdef WIN32
+#if false
 struct tms {
   clock_t tms_utime;  /* user time */
   clock_t tms_stime;  /* system time */
@@ -74,6 +74,33 @@ struct tms {
 #define SIM_CYCLECOUNT_INC 	1
 #define SIM_CYCLECOUNT_AGC	2
 
+
+typedef struct
+{
+  char* core;
+  char* resume;
+  char* cdu_log;
+  char* symtab;
+  char* directory;
+  char* cd;
+  char* cfg;
+  char* fromfile;
+  int   port;
+  int   dump_time;
+  int   debug_dsky;
+  int   debug_deda;
+  int   deda_quiet;
+  int   inhibit_alarms;
+  int   show_alarms;
+  int   quiet;
+  int   fullname;
+  int   debug;
+  int   interlace;
+  int	resumed;
+  int	version;
+  int	initializeSunburst37;
+  int	no_resume;
+} Options_t;
 
 typedef struct
 {

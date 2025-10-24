@@ -43,7 +43,7 @@
                              simulations.
 */
 
-#include "yaAGC.h"
+#include "core/yaAGC.h"
 #include "agc_engine.h"
 #include "ringbuffer.h"
 

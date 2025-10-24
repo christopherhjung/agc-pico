@@ -39,17 +39,13 @@
 
 
 #include <stdio.h>
-#include <ctype.h>
-#include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "agc_cli.h"
+#include "core/dsky.h"
 #include "agc_engine.h"
-#include "dsky.h"
-#include "yaAGC.h"
 
-#include "agc_simulator.h"
+#include "core/agc_simulator.h"
 
 #include <assert.h>
 

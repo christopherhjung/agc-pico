@@ -22,7 +22,7 @@
   Mods:      2020-06-07 MKF  Created.
 */
 
-#include "ringbuffer.h"
+#include "core/ringbuffer.h"
 
 #include <string.h>
 
