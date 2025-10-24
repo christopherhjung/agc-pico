@@ -55,7 +55,7 @@ static int ChannelMasks[256] = { 077777 };
 static int ChannelIsSetUp = 0;
 
 static void
-ChannelSetup (agc_t* State)
+ChannelSetup (agc_state_t* State)
 {
   ChannelIsSetUp = 1;
 
@@ -74,7 +74,7 @@ ChannelSetup (agc_t* State)
  * The bulk of the code was copied from SocketAPI.c
  */
 void
-agc_channel_output (agc_t* State, int channel, int value)
+agc_channel_output (agc_state_t* State, int channel, int value)
 {
   if (!ChannelIsSetUp)
     ChannelSetup (State);
@@ -83,7 +83,7 @@ agc_channel_output (agc_t* State, int channel, int value)
   // account for those separately.
   if (channel == 7)
     {
-      State->InputChannel[7] = State->OutputChannel7 = (value & 0160);
+      State->inputChannel[7] = State->output_channel_7 = (value & 0160);
       return;
     }
 
@@ -109,7 +109,7 @@ agc_channel_output (agc_t* State, int channel, int value)
  * See also NullAPI.c
  */
 int
-agc_channel_input (agc_t* State)
+agc_channel_input (agc_state_t* State)
 {
   if (!ChannelIsSetUp)
     ChannelSetup (State);
@@ -136,18 +136,18 @@ agc_channel_input (agc_t* State)
         {
           // This is a counter increment. According to NullAPI.c we need to
           // immediately return a value of 1.
-          UnprogrammedIncrement (State, packet.channel, packet.value);
+          unprogrammed_increment (State, packet.channel, packet.value);
           return 1;
         }
 
       // Mask out irrelevant bits, set current bits, and write to CPU.
       packet.value &= ChannelMasks[packet.channel];
-      packet.value |= ReadIO (State, packet.channel) & ~ChannelMasks[packet.channel];
-      WriteIO (State, packet.channel, packet.value);
+      packet.value |= read_io (State, packet.channel) & ~ChannelMasks[packet.channel];
+      write_io (State, packet.channel, packet.value);
 
       // If this is a keystroke from the DSKY, generate an interrupt req.
       if (packet.channel == 015){
-        State->InterruptRequests[5] = 1;
+        State->interrupt_requests[5] = 1;
       }
       // If this is on fictitious input channel 0173, then the data
       // should be placed in the INLINK counter register, and an
@@ -155,7 +155,7 @@ agc_channel_input (agc_t* State)
       else if (packet.channel == 0173)
         {
           State->Erasable[0][RegINLINK] = (packet.value & 077777);
-          State->InterruptRequests[7] = 1;
+          State->interrupt_requests[7] = 1;
         }
       // Fictitious registers for rotational hand controller (RHC).
       // Note that the RHC angles are not immediately used, but
@@ -184,16 +184,12 @@ agc_channel_input (agc_t* State)
 
 
 void
-ChannelRoutine (agc_t* State)
+channel_routine (agc_state_t* State)
 {
 }
 
-void
-ShiftToDeda (agc_t* State, int Data)
-{
-}
 
 void
-RequestRadarData (agc_t *State)
+request_radar_data (agc_state_t *State)
 {
 }

@@ -134,12 +134,7 @@
 */
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef AGC_ENGINE_H
-#define AGC_ENGINE_H
+#pragma once
 
 #if defined(_MSC_VER) && (_MSC_VER >= 1300)
 #define _CRT_SECURE_NO_DEPRECATE
@@ -290,7 +285,7 @@ typedef struct
   // The following variable counts the total number of clock cycles since
   // CPU-startup.  A 64-bit integer is used, because with a 32-bit integer
   // you'd get only about 14 hours before the counter wraps around.
-  uint64_t /* unsigned long long */ CycleCounter;
+  uint64_t /* unsigned long long */ cycle_counter;
   // All memory -- registers, RAM, and ROM -- is 16-bit, consisting of 15 bits
   // of data and one of (odd) parity.  The MIT documents consistently
   // use octal, so we do as well.
@@ -299,106 +294,85 @@ typedef struct
   // There are actually only 36 (0-043) fixed banks, but the calculation of bank
   // numbers by the AGC can theoretically go 0-39 (0-047).  Therefore, I
   // provide some extra.
-  int16_t Fixed[40][02000];	// Banks 2,3 are "fixed-fixed".
-  uint32_t Parities[40*(02000/32)];
+  int16_t fixed[40][02000];	// Banks 2,3 are "fixed-fixed".
+  uint32_t parities[40*(02000/32)];
   // There are also "input/output channels".  Output channels are acted upon
   // immediately, but input channels are buffered from asynchronous data.
-  int16_t InputChannel[NUM_CHANNELS];
-  int16_t OutputChannel7;
-  int16_t OutputChannel10[16];
+  int16_t inputChannel[NUM_CHANNELS];
+  int16_t output_channel_7;
+  int16_t output_channel_10[16];
   // The indexing value.
-  int16_t IndexValue;
-  int8_t InterruptRequests[1 + NUM_INTERRUPT_TYPES];	// 0-index not used.
+  int16_t index_value;
+  int8_t interrupt_requests[1 + NUM_INTERRUPT_TYPES];	// 0-index not used.
   // CPU internal flags.
-  unsigned ExtraCode:1;		// Set by the "Extend" instruction.
-  unsigned AllowInterrupt:1;
+  unsigned extra_code:1;		// Set by the "Extend" instruction.
+  unsigned allow_interrupt:1;
   //unsigned RegA16:1;		// Bit "16" of register A.
-  unsigned InIsr:1;		// Set when in an ISR, reset when in normal code.
-  unsigned SubstituteInstruction:1;	// Use BBRUPT register.
-  unsigned PendFlag:1;		// Multi-MCT instruction pending.
-  unsigned PendDelay:3;		// Countdown to pending instruction.
-  unsigned ExtraDelay:3;	// ... and extra, for special cases.
+  unsigned in_isr:1;		// Set when in an ISR, reset when in normal code.
+  unsigned substitute_instruction:1;	// Use BBRUPT register.
+  unsigned pend_flag:1;		// Multi-MCT instruction pending.
+  unsigned pend_delay:3;		// Countdown to pending instruction.
+  unsigned extra_delay:3;	// ... and extra, for special cases.
   //unsigned RegQ16:1;		// Bit "16" of register Q.
-  unsigned DownruptTimeValid:1;	// Set if the DownruptTime field is valid.
-  unsigned NightWatchman:1;     // Set when Night Watchman is watching. Cleared by accessing address 67.
-  unsigned NightWatchmanTripped:1; // Set when Night Watchman has been tripped and its CH77 bit is being asserted.
-  unsigned RuptLock:1;          // Set when rupts are being watched. Cleared by executing any non-ISR instruction
-  unsigned NoRupt:1;            // Set when rupts are being watched. Cleared by executing any ISR instruction
-  unsigned TCTrap:1;            // Set when TC is being watched. Cleared by executing any non-TC/TCF instruction
-  unsigned NoTC:1;              // Set when TC is being watched. Cleared by executing TC or TCF
-  unsigned Standby:1;           // Set while the computer is in standby mode.
-  unsigned SbyPressed:1;        // Set while PRO is being held down; cleared by releasing PRO
-  unsigned SbyStillPressed:1;   // Set upon entry to standby, until PRO is released
-  unsigned ParityFail:1;        // Set when a parity failure is encountered accessing memory (in yaAGC, just hitting banks 44+)
-  unsigned CheckParity:1;       // Enable parity checking for fixed memory.
-  unsigned RestartLight:1;      // The present state of the RESTART light
-  unsigned TookBZF:1;           // Flag for having just taken a BZF branch, used for simulation of a TC Trap hardware bug
-  unsigned TookBZMF:1;          // Flag for having just taken a BZMF branch, used for simulation of a TC Trap hardware bug
-  unsigned GeneratedWarning:1;  // Whether there is a pending input to the warning filter
-  unsigned Trap31A:1;           // Enable flag for Trap 31A
-  unsigned Trap31B:1;           // Enable flag for Trap 31B
-  unsigned Trap32:1;            // Enable flag for Trap 32
-  unsigned RadarGateCounter:4;  // Counter tracking radar cycle progress
-  uint32_t WarningFilter;       // Current voltage of the AGC warning filter
-  uint64_t /*unsigned long long */ DownruptTime;	// Time when next DOWNRUPT occurs.
-  int Downlink;
-  int NextZ;                    // Next value for the Z register
-  int ScalerCounter;            // Counter to keep track of scaler increment timing
-  int ChannelRoutineCount;      // Counter to keep track of channel interface routine timing
-  unsigned DskyTimer;           // Timer for DSKY-related timing
-  unsigned DskyFlash;           // DSKY flash counter (0 = flash occurring)
-  unsigned DskyChannel163;      // Copy of the fake DSKY channel 163
-  // The following pointer is present for whatever use the Orbiter
-  // integration squad wants.  The Virtual AGC code proper doesn't use it
-  // in any way.
-  void *agc_clientdata;
-} agc_t;
+  unsigned downrupt_time_valid:1;	// Set if the DownruptTime field is valid.
+  unsigned night_watchman:1;     // Set when Night Watchman is watching. Cleared by accessing address 67.
+  unsigned night_watchman_tripped:1; // Set when Night Watchman has been tripped and its CH77 bit is being asserted.
+  unsigned rupt_lock:1;          // Set when rupts are being watched. Cleared by executing any non-ISR instruction
+  unsigned no_rupt:1;            // Set when rupts are being watched. Cleared by executing any ISR instruction
+  unsigned tc_trap:1;            // Set when TC is being watched. Cleared by executing any non-TC/TCF instruction
+  unsigned no_tc:1;              // Set when TC is being watched. Cleared by executing TC or TCF
+  unsigned standby:1;           // Set while the computer is in standby mode.
+  unsigned sby_pressed:1;        // Set while PRO is being held down; cleared by releasing PRO
+  unsigned sby_still_pressed:1;   // Set upon entry to standby, until PRO is released
+  unsigned parity_fail:1;        // Set when a parity failure is encountered accessing memory (in yaAGC, just hitting banks 44+)
+  unsigned check_parity:1;       // Enable parity checking for fixed memory.
+  unsigned restart_light:1;      // The present state of the RESTART light
+  unsigned took_bzf:1;           // Flag for having just taken a BZF branch, used for simulation of a TC Trap hardware bug
+  unsigned took_bzmf:1;          // Flag for having just taken a BZMF branch, used for simulation of a TC Trap hardware bug
+  unsigned generated_warning:1;  // Whether there is a pending input to the warning filter
+  unsigned trap_31a:1;           // Enable flag for Trap 31A
+  unsigned trap_31b:1;           // Enable flag for Trap 31B
+  unsigned trap_32:1;            // Enable flag for Trap 32
+  unsigned radar_gate_counter:4;  // Counter tracking radar cycle progress
+  uint32_t warning_filter;       // Current voltage of the AGC warning filter
+  uint64_t /*unsigned long long */ downrupt_time;	// Time when next DOWNRUPT occurs.
+  int downlink;
+  int next_z;                    // Next value for the Z register
+  int scale_counter;            // Counter to keep track of scaler increment timing
+  int channel_routine_count;      // Counter to keep track of channel interface routine timing
+  unsigned dsky_timer;           // Timer for DSKY-related timing
+  unsigned dsky_flash;           // DSKY flash counter (0 = flash occurring)
+  unsigned dsky_channel_163;      // Copy of the fake DSKY channel 163
+} agc_state_t;
 
-// Stuff for --debug-dsky mode.
-typedef struct
-{
-  int KeyCode;
-  int Channel;
-  int Value;
-  char Logic;
-} DebugRule_t;
 extern int DebugDsky;
 extern int InhibitAlarms;
 extern int ShowAlarms;
 extern int NumDebugRules;
 
-// Stuff for --debug mode.
 int CmOrLm;
 
 
 //---------------------------------------------------------------------------
 // Function prototypes.
 
-int agc_engine (agc_t * State);
-int agc_engine_init (agc_t * State, const char *RomImage,
+int agc_engine (agc_state_t * State);
+int agc_engine_init (agc_state_t * State, const char *RomImage,
 		     const char *CoreDump, int AllOrErasable);
-int agc_load_binfile(agc_t *Stage, const char *RomImage);
-int ReadIO (agc_t * State, int Address);
-void WriteIO (agc_t * State, int Address, int Value);
-void CpuWriteIO (agc_t * State, int Address, int Value);
+int agc_load_binfile(agc_state_t *Stage, const char *RomImage);
+int read_io (agc_state_t * State, int Address);
+void write_io (agc_state_t * State, int Address, int Value);
+void cpu_write_io (agc_state_t * State, int Address, int Value);
 FILE *rfopen (const char *Filename, const char *mode);
-int16_t OverflowCorrected (int Value);
-int SignExtend (int16_t Word);
-int AddSP16 (int Addend1, int Addend2);
-void UnprogrammedIncrement (agc_t *State, int Counter, int IncType);
+int16_t overflow_corrected (int Value);
+int sign_extend (int16_t Word);
+int add_sp_16 (int Addend1, int Addend2);
+void unprogrammed_increment (agc_state_t *State, int Counter, int IncType);
 
 // API for yaAGC-to-peripheral communications.
-void agc_channel_output (agc_t * State, int channel, int value);
-int agc_channel_input (agc_t * State);
+void agc_channel_output (agc_state_t * State, int channel, int value);
+int agc_channel_input (agc_state_t * State);
 int dsky_channel_input (int* channel, int* value);
 int dsky_channel_output (int channel, int value);
-void ChannelRoutine (agc_t *State);
-void ShiftToDeda (agc_t *State, int Data);
-void RequestRadarData (agc_t *State);
-
-#endif // AGC_ENGINE_H
-
-#ifdef __cplusplus
-}
-#endif
-
+void channel_routine (agc_state_t *State);
+void request_radar_data (agc_state_t *State);

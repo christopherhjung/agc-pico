@@ -35,11 +35,7 @@
   Mods:         12/02/08 OH.	Began rework
                 08/04/16 OH     Fixed the GPL statement and old user-id
  */
-
-
-#ifndef AGC_SIMULATOR_H_
-#define AGC_SIMULATOR_H_
-
+#pragma once
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
@@ -100,26 +96,23 @@ typedef struct
   int	version;
   int	initializeSunburst37;
   int	no_resume;
-} Options_t;
+} opt_t;
 
 typedef struct
 {
-	Options_t* Options;
-	DebugRule_t* DebugRules;
-	clock_t DumpInterval;
-	clock_t RealTimeOffset;
-	clock_t RealTime;
-	clock_t LastRealTime;
-	clock_t NextCoreDump;
-	uint64_t DesiredCycles;
-	uint64_t CycleCount;
-	struct tms DummyTime;
-	agc_t State;
-} Simulator_t;
+	opt_t* opt;
+	clock_t dump_interval;
+	clock_t real_time_offset;
+	clock_t real_time;
+	clock_t last_real_time;
+	clock_t next_core_dump;
+	uint64_t desired_cycles;
+	uint64_t cycle_dump;
+	struct tms dummy_time;
+	agc_state_t state;
+} sim_t;
 
-extern void SimSetCycleCount(int Mode);
-extern int SimInitialize(Options_t* Options);
-extern void SimExecute(void);
-extern void SimUpdateTime(void);
-
-#endif /* AGC_SIMULATOR_H_ */
+extern void sim_set_cycle_count(int Mode);
+extern int sim_init(opt_t* Options);
+extern void sim_exec(void);
+extern void sin_time_update(void);

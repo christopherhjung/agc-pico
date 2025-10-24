@@ -39,14 +39,12 @@
  */
 
 
-#ifndef AGC_CLI_H_
-#define AGC_CLI_H_
+#pragma once
 
 #define CLI_E_OK 0
 #define CLI_E_UNKOWNTOKEN 1
 #include "core/agc_simulator.h"
 
 
-extern Options_t* CliParseArguments(int argc, char *argv[]);
+extern opt_t* CliParseArguments(int argc, char *argv[]);
 
-#endif /* AGC_CLI_H_ */

@@ -52,7 +52,7 @@ int QuietMode = 0;
 
 static char CduLog[] = "yaAGC.cdulog";
 
-static Options_t Options;
+static opt_t Options;
 
 /**
 The command line options try to stay compatible with the early versions of
@@ -260,9 +260,9 @@ When errors are encountered the parser will return a NULL reference
 \param argc The argument count
 \param *argv The pointer to the argument array.
 \return A handle to an Option structure. */
-Options_t* CliParseArguments(int argc, char *argv[])
+opt_t* CliParseArguments(int argc, char *argv[])
 {
-	Options_t* result = (Options_t*)0;
+	opt_t* result = (opt_t*)0;
 	int i;
 
 	/* Set all the defaults in the option structure */
@@ -319,7 +319,7 @@ Options_t* CliParseArguments(int argc, char *argv[])
 		{
 			if (CliParseCfg (Options.cfg))
 			{
-			  result = (Options_t*)0;
+			  result = (opt_t*)0;
 			  printf("\n*** Unknown configuration file. ***\n\n");
 			}
 		}

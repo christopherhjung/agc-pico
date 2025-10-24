@@ -23,6 +23,8 @@
   Mods:      2020-06-07 MKF  Created.
 */
 
+#pragma once
+
 #include <stdint.h>
 
 #define RINGBUFFER_ELEMENT_SIZE 4

@@ -126,7 +126,7 @@ rfopen (const char *Filename, const char *mode);
 // core-dump file.
 
 int
-agc_load_binfile (agc_t *State, const char *RomImage)
+agc_load_binfile (agc_state_t *State, const char *RomImage)
 
 {
   FILE *fp = NULL;
@@ -166,8 +166,8 @@ agc_load_binfile (agc_t *State, const char *RomImage)
       goto Done;
     }
 
-  State->CheckParity = 0;
-  memset (&State->Parities, 0, sizeof(State->Parities));
+  State->check_parity = 0;
+  memset (&State->parities, 0, sizeof(State->parities));
 
   Bank = 2;
   for (Bank = 2, j = 0, i = 0; i < n; i++)
@@ -192,14 +192,14 @@ agc_load_binfile (agc_t *State, const char *RomImage)
       RawValue = (In[0] * 256 + In[1]);
       Parity = RawValue & 1;
 
-      State->Fixed[Bank][j] = RawValue >> 1;
-      State->Parities[(Bank * 02000 + j) / 32] |= Parity << (j % 32);
+      State->fixed[Bank][j] = RawValue >> 1;
+      State->parities[(Bank * 02000 + j) / 32] |= Parity << (j % 32);
       j++;
 
       // If any of the parity bits are actually set, this must be a ROM built with
       // --hardware. Enable parity checking.
       if (Parity)
-	State->CheckParity = 1;
+	State->check_parity = 1;
 
       if (j == 02000)
 	{
@@ -224,7 +224,7 @@ agc_load_binfile (agc_t *State, const char *RomImage)
 }
 
 int
-agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
+agc_engine_init (agc_state_t * State, const char *RomImage, const char *CoreDump,
 		 int AllOrErasable)
 {
 #if defined (WIN32) || defined (__APPLE__)  
@@ -245,11 +245,11 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
 
   // Clear i/o channels.
   for (i = 0; i < NUM_CHANNELS; i++)
-    State->InputChannel[i] = 0;
-  State->InputChannel[030] = 037777;
-  State->InputChannel[031] = 077777;
-  State->InputChannel[032] = 077777;
-  State->InputChannel[033] = 077777;
+    State->inputChannel[i] = 0;
+  State->inputChannel[030] = 037777;
+  State->inputChannel[031] = 077777;
+  State->inputChannel[032] = 077777;
+  State->inputChannel[033] = 077777;
 
   // Clear erasable memory.
   for (Bank = 0; Bank < 8; Bank++)
@@ -258,60 +258,60 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
   State->Erasable[0][RegZ] = 04000;	// Initial program counter.
 
   // Set up the CPU state variables that aren't part of normal memory.
-  State->CycleCounter = 0;
-  State->ExtraCode = 0;
-  State->AllowInterrupt = 1; // The GOJAM sequence enables interrupts
-  State->InterruptRequests[8] = 1;	// DOWNRUPT.
+  State->cycle_counter = 0;
+  State->extra_code = 0;
+  State->allow_interrupt = 1; // The GOJAM sequence enables interrupts
+  State->interrupt_requests[8] = 1;	// DOWNRUPT.
   //State->RegA16 = 0;
-  State->PendFlag = 0;
-  State->PendDelay = 0;
-  State->ExtraDelay = 0;
+  State->pend_flag = 0;
+  State->pend_delay = 0;
+  State->extra_delay = 0;
   //State->RegQ16 = 0;
 
-  State->OutputChannel7 = 0;
+  State->output_channel_7 = 0;
   for (j = 0; j < 16; j++)
-    State->OutputChannel10[j] = 0;
-  State->IndexValue = 0;
+    State->output_channel_10[j] = 0;
+  State->index_value = 0;
   for (j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
-    State->InterruptRequests[j] = 0;
-  State->InIsr = 0;
-  State->SubstituteInstruction = 0;
-  State->DownruptTimeValid = 1;
-  State->DownruptTime = 0;
-  State->Downlink = 0;
+    State->interrupt_requests[j] = 0;
+  State->in_isr = 0;
+  State->substitute_instruction = 0;
+  State->downrupt_time_valid = 1;
+  State->downrupt_time = 0;
+  State->downlink = 0;
 
-  State->NightWatchman = 0;
-  State->NightWatchmanTripped = 0;
-  State->RuptLock = 0;
-  State->NoRupt = 0;
-  State->TCTrap = 0;
-  State->NoTC = 0;
-  State->ParityFail = 0;
+  State->night_watchman = 0;
+  State->night_watchman_tripped = 0;
+  State->rupt_lock = 0;
+  State->no_rupt = 0;
+  State->tc_trap = 0;
+  State->no_tc = 0;
+  State->parity_fail = 0;
 
-  State->WarningFilter = 0;
-  State->GeneratedWarning = 0;
+  State->warning_filter = 0;
+  State->generated_warning = 0;
 
-  State->RestartLight = 0;
-  State->Standby = 0;
-  State->SbyPressed = 0;
-  State->SbyStillPressed = 0;
+  State->restart_light = 0;
+  State->standby = 0;
+  State->sby_pressed = 0;
+  State->sby_still_pressed = 0;
 
-  State->NextZ = 0;
-  State->ScalerCounter = 0;
-  State->ChannelRoutineCount = 0;
+  State->next_z = 0;
+  State->scale_counter = 0;
+  State->channel_routine_count = 0;
 
-  State->DskyTimer = 0;
-  State->DskyFlash = 0;
-  State->DskyChannel163 = 0;
+  State->dsky_timer = 0;
+  State->dsky_flash = 0;
+  State->dsky_channel_163 = 0;
 
-  State->TookBZF = 0;
-  State->TookBZMF = 0;
+  State->took_bzf = 0;
+  State->took_bzmf = 0;
 
-  State->Trap31A = 0;
-  State->Trap31B = 0;
-  State->Trap32 = 0;
+  State->trap_31a = 0;
+  State->trap_31b = 0;
+  State->trap_32 = 0;
 
-  State->RadarGateCounter = 0;
+  State->radar_gate_counter = 0;
 
   if (initializeSunburst37)
     {
@@ -341,7 +341,7 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
 	      if (1 != fscanf (cd, "%o", &j))
 		goto Done;
 	      if (AllOrErasable)
-		State->InputChannel[i] = j;
+		State->inputChannel[i] = j;
 	    }
 
 	  // Load up erasable memory.
@@ -359,64 +359,64 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
 	      // Set up the CPU state variables that aren't part of normal memory.
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->CycleCounter = i;
+	      State->cycle_counter = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->ExtraCode = i;
+	      State->extra_code = i;
 	      // I've seen no indication so far of a reset value for interrupt-enable. 
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->AllowInterrupt = i;
+	      State->allow_interrupt = i;
 	      //if (1 != fscanf (cd, "%o", &i))
 	      //  goto Done;
 	      //State->RegA16 = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->PendFlag = i;
+	      State->pend_flag = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->PendDelay = i;
+	      State->pend_delay = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->ExtraDelay = i;
+	      State->extra_delay = i;
 	      //if (1 != fscanf (cd, "%o", &i))
 	      //  goto Done;
 	      //State->RegQ16 = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->OutputChannel7 = i;
+	      State->output_channel_7 = i;
 	      for (j = 0; j < 16; j++)
 		{
 		  if (1 != fscanf (cd, "%o", &i))
 		    goto Done;
-		  State->OutputChannel10[j] = i;
+		  State->output_channel_10[j] = i;
 		}
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->IndexValue = i;
+	      State->index_value = i;
 	      for (j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
 		{
 		  if (1 != fscanf (cd, "%o", &i))
 		    goto Done;
-		  State->InterruptRequests[j] = i;
+		  State->interrupt_requests[j] = i;
 		}
 	      // Override the above and make DOWNRUPT always enabled at start.
-	      State->InterruptRequests[8] = 1;
+	      State->interrupt_requests[8] = 1;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->InIsr = i;
+	      State->in_isr = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->SubstituteInstruction = i;
+	      State->substitute_instruction = i;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->DownruptTimeValid = i;
+	      State->downrupt_time_valid = i;
 	      if (1 != fscanf (cd, "%llo", &lli))
 		goto Done;
-	      State->DownruptTime = lli;
+	      State->downrupt_time = lli;
 	      if (1 != fscanf (cd, "%o", &i))
 		goto Done;
-	      State->Downlink = i;
+	      State->downlink = i;
 	    }
 
 	  RetVal = 0;

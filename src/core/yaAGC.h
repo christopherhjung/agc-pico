@@ -50,27 +50,9 @@
 				be ported to wasi-libc.
 */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef YAAGC_H
-#define YAAGC_H
+#pragma once
 
 #define FORMAT_64U "%llu"
 #define FORMAT_64O "%llo"
 
-//--------------------------------------------------------------------------
-// Function prototypes.
 
-#ifndef WASI
-int InitializeSocketSystem (void);
-int EstablishSocket (unsigned short portnum, int MaxClients);
-int CallSocket (char *hostname, unsigned short portnum);
-#endif
-
-#endif // YAAGC_H
-
-#ifdef __cplusplus
-}
-#endif

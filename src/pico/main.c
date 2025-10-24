@@ -57,13 +57,13 @@ int main (int argc, char *argv[])
 #endif
 
 	/* Declare Options and parse the command line */
-	Options_t Options;
+	opt_t Options;
 
 	/* Initialize the Simulator and debugger if enabled
 	 * if the initialization fails or Options is NULL then the simulator will
 	 * return a non zero value and subsequently bail and exit the program */
-	if (SimInitialize(&Options) == SIM_E_OK)
-	  SimExecute();
+	if (sim_init(&Options) == SIM_E_OK)
+	  sim_exec();
 
 	return (0);
 }
