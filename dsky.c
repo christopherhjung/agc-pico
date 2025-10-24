@@ -245,7 +245,7 @@ void dsky_two_print(dsky_two_t *two)
 void dsky_print(dsky_t *dsky)
 {
   printf("CA  PR\n");
-  printf(" %c", dsky->comp_acty ? 'X' : ' ');
+  printf("%s", dsky->comp_acty ? "XX" : "  ");
   printf("  ");
   dsky_two_print(&dsky->prog);
   printf("\n");
