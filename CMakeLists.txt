@@ -10,8 +10,5 @@ add_executable(yaAGC ${VAGC_src})
 target_compile_definitions(yaAGC PRIVATE NVER="${NVER}" NOREADLINE="yes")
 target_link_libraries(yaAGC PRIVATE m)
 
-add_library(regex regex.c)
-
-
 
 install(TARGETS yaAGC)
