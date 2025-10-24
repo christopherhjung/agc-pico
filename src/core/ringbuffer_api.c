@@ -47,6 +47,8 @@
 #include "agc_engine.h"
 #include "ringbuffer.h"
 
+int LastRhcPitch, LastRhcYaw, LastRhcRoll;
+
 static int CurrentChannelValues[256] = { 0 };
 static int ChannelMasks[256] = { 077777 };
 

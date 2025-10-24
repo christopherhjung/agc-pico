@@ -144,8 +144,6 @@ int SimInitialize(Options_t* Options)
 
 	/* Set legacy Option variables */
 	DebugDsky = Options->debug_dsky;
-	DebugDeda = Options->debug_deda;
-	DedaQuiet = Options->deda_quiet;
 	InhibitAlarms = Options->inhibit_alarms;
 	ShowAlarms = Options->show_alarms;
 	/* If we are not in quiet mode display the version info */

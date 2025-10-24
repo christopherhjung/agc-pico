@@ -1909,26 +1909,6 @@ agc_engine (agc_t * State)
   State->CycleCounter++;
 
   //----------------------------------------------------------------------
-  // The following little thing is useful only for debugging yaDEDA with
-  // the --debug-deda command-line switch.  It just outputs the contents
-  // of the address that was specified by the DEDA at 1/2 second intervals.
-  if (DedaMonitor && State->CycleCounter >= DedaWhen)
-    {
-      int16_t Data;
-      Data = State->Erasable[0][DedaAddress];
-      DedaWhen = State->CycleCounter + 1024000 / 24;	// 1/2 second.
-      ShiftToDeda (State, (DedaAddress >> 6) & 7);
-      ShiftToDeda (State, (DedaAddress >> 3) & 7);
-      ShiftToDeda (State, DedaAddress & 7);
-      ShiftToDeda (State, 0);
-      ShiftToDeda (State, (Data >> 12) & 7);
-      ShiftToDeda (State, (Data >> 9) & 7);
-      ShiftToDeda (State, (Data >> 6) & 7);
-      ShiftToDeda (State, (Data >> 3) & 7);
-      ShiftToDeda (State, Data & 7);
-    }
-
-  //----------------------------------------------------------------------
   // Update the thingy that determines when 1/1600 second has passed.
   // 1/1600 is the basic timing used to drive timer registers.  1/1600
   // second happens to be 160/3 machine cycles.

@@ -145,54 +145,12 @@ extern "C" {
 #define _CRT_SECURE_NO_DEPRECATE
 #endif
 
-#ifndef NULL
-#define NULL ((void *) 0)
-#endif
-
 #include <stdio.h>
-
-// The following is used to get the int16_t datatype.
-#ifdef WIN32
-// Win32
-typedef short int16_t;
-typedef signed char int8_t;
-typedef unsigned char uint8_t; // 20170326
-typedef unsigned int uint32_t; // 20170326
-typedef unsigned short uint16_t; // 20170329
-#ifdef __MINGW32__
-typedef unsigned long long uint64_t;
-#else
-typedef unsigned __int64 uint64_t;
-#endif
-#elif defined (__embedded__)
-// Embedded, gcc cross-compiler.
-typedef short int16_t;
-typedef signed char int8_t;
-typedef unsigned short uint16_t;
-#elif defined (SDCC)
-// SDCC (8-bit 8051)
-typedef int int16_t;
-typedef signed char int8_t;
-typedef unsigned uint16_t;
-extern long random (void);
-#else // WIN32
-// All other (Linux, Mac OS, etc.)
-//#include <sys/types.h>
 #include <stdint.h>
-#endif // WIN32
 
-// For socket connections.
-#ifdef WIN32
-#define SOCKET_BROKEN 1
-#else
-#define SOCKET_ERROR -1
-#define SOCKET_BROKEN (errno == EPIPE)
-#endif
 
 //----------------------------------------------------------------------------
 // Constants.
-
-#define DEFAULT_URL "https://www.ibiblio.org/apollo/yaTelemetry.html#yaTelemetry"
 
 // Max number of symbols in a yaAGC sym-dump.
 #define MAX_SYM_DUMP 25
@@ -322,45 +280,6 @@ extern long random (void);
 #define DL_CM_ENTRY_UPDATE 9
 #define DL_LM_AGS_INITIALIZATION_UPDATE 10
 
-//---------------------------------------------------------------------------
-// Data types.
-
-// Stuff for specifying how to print various fields.
-
-typedef enum {
-  FMT_SP, FMT_DP, FMT_OCT, FMT_2OCT, FMT_DEC, FMT_2DEC, FMT_USP, FMT_2DECL
-} Format_t;
-
-// Function used for writing out telemetry data.
-typedef void Swrite_t (void);
-typedef char *Sformat_t (int IndexIntoList, int Scale, Format_t Format);
-
-typedef char FieldSpecName_t[65];
-
-typedef struct {
-  int IndexIntoList;	// if -1, then is a spacer.
-  FieldSpecName_t Name;
-  int Scale;
-  Format_t Format;
-  Sformat_t *Formatter;
-  char Unit[32];
-  int Row;		// If 0,0, then just "next" position.
-  int Col;
-} FieldSpec_t;
-
-typedef struct {
-  int id;
-  char Title[SWIDTH + 1];
-  char URL[SWIDTH + 1];
-  FieldSpec_t FieldSpecs[MAX_DOWNLINK_LIST];
-  int numFieldSpecs;
-} DownlinkListSpec_t;
-
-extern char *DocumentationURL;
-
-// A type of function for processing downlink lists.
-typedef void ProcessDownlinkList_t (DownlinkListSpec_t *Spec);
-
 //--------------------------------------------------------------------------
 // Each instance of the AGC CPU simulation has a data structure of type agc_t
 // that contains the CPU's internal states, the complete memory space, and any
@@ -449,36 +368,12 @@ extern int ShowAlarms;
 extern int NumDebugRules;
 
 // Stuff for --debug mode.
-
-int BacktraceInitialized;
-int BacktraceNextAdd;
-int BacktraceCount;
-int MAX_CLIENTS;
-int *ServerSockets;
-int NumServers;
-int DebugDeda, DedaQuiet;
-int DedaMonitor;
-int DedaAddress;
-uint64_t /* unsigned long long */ DedaWhen;
-int DownlinkListBuffer[MAX_DOWNLINK_LIST];
-int DownlinkListCount, DownlinkListExpected, DownlinkListZero;
-ProcessDownlinkList_t *ProcessDownlinkList;
 int CmOrLm;
-int Sundance;
-char Sbuffer[SHEIGHT][SWIDTH + 1];
-int Sheight, Swidth;
-int LastRhcPitch, LastRhcYaw, LastRhcRoll;
-
-#ifndef DECODE_DIGITAL_DOWNLINK_C
-extern Swrite_t *SwritePtr;
-#endif
 
 
 //---------------------------------------------------------------------------
 // Function prototypes.
 
-char *nbfgets (char *Buffer, int Length);
-void nbfgets_ready (const char *);
 int agc_engine (agc_t * State);
 int agc_engine_init (agc_t * State, const char *RomImage,
 		     const char *CoreDump, int AllOrErasable);
@@ -487,22 +382,10 @@ int ReadIO (agc_t * State, int Address);
 void WriteIO (agc_t * State, int Address, int Value);
 void CpuWriteIO (agc_t * State, int Address, int Value);
 FILE *rfopen (const char *Filename, const char *mode);
-int BacktraceRestore (agc_t *State, int n);
-void BacktraceDisplay (agc_t *State,int Num);
 int16_t OverflowCorrected (int Value);
 int SignExtend (int16_t Word);
 int AddSP16 (int Addend1, int Addend2);
 void UnprogrammedIncrement (agc_t *State, int Counter, int IncType);
-
-void DecodeDigitalDownlink (int Channel, int Value, int CmOrLm);
-int dddConfigure(char *agcSoftware, const char *docPrefix);
-ProcessDownlinkList_t PrintDownlinkList;
-void PrintDP (int *Ptr, int Scale, int row, int col);
-void PrintSP (int *Ptr, int Scale, int row, int col);
-void PrintUSP (int *Ptr, int Scale, int row, int col);
-double GetDP (int *Ptr, int Scale);
-double GetSP (int *Ptr, int Scale);
-double GetUSP (int *Ptr, int Scale);
 
 // API for yaAGC-to-peripheral communications.
 void agc_channel_output (agc_t * State, int channel, int value);
