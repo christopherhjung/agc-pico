@@ -524,7 +524,7 @@ int DebuggerInterruptMasks[11] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 // Stuff for doing structural coverage analysis.  Yes, I know it could be done
 // much more cleverly.
 
-int      CoverageCounts = 0; // Increment coverage counts is != 0.
+int      COVERAGE_COUNTS = 0; // Increment coverage counts is != 0.
 unsigned ErasableReadCounts[8][0400];
 unsigned ErasableWriteCounts[8][0400];
 unsigned ErasableInstructionCounts[8][0400];
@@ -556,51 +556,51 @@ int NumDebugRules = 0;
 // directly is that the L and Q registers appear in both memory and i/o space,
 // at the same addresses.
 
-int read_io(agc_state_t* State, int Address)
+int read_io(agc_state_t* state, int Address)
 {
   if(Address < 0 || Address > 0777)
     return (0);
-  if(CoverageCounts)
+  if(COVERAGE_COUNTS)
     IoReadCounts[Address]++;
   if(Address == RegL || Address == RegQ)
-    return (State->erasable[0][Address]);
-  return (State->inputChannel[Address]);
+    return (state->erasable[0][Address]);
+  return (state->inputChannel[Address]);
 }
 
-void write_io(agc_state_t* State, int Address, int Value)
+void write_io(agc_state_t* state, int Address, int Value)
 {
   // The value should be in AGC format.
   Value &= 077777;
   if(Address < 0 || Address > 0777)
     return;
-  if(CoverageCounts)
+  if(COVERAGE_COUNTS)
     IoWriteCounts[Address]++;
   if(Address == RegL || Address == RegQ)
-    State->erasable[0][Address] = Value;
+    state->erasable[0][Address] = Value;
 
   if(Address == 010)
   {
     // Channel 10 is converted externally to the CPU into up to 16 ports,
     // by means of latching relays.  We need to capture this data.
-    State->output_channel_10[(Value >> 11) & 017] = Value;
+    state->output_channel_10[(Value >> 11) & 017] = Value;
   }
   else if((Address == 015 || Address == 016) && Value == 022)
   {
     // RSET being pressed on either DSKY clears the RESTART light
     // flip-flop directly, without software intervention
-    State->restart_light = 0;
+    state->restart_light = 0;
   }
   else if(Address == 033)
   {
     // Channel 33 bits 11-15 are controlled internally, so don't let
     // anybody write to them
-    Value = (State->inputChannel[Address] & 076000) | (Value & 001777);
+    Value = (state->inputChannel[Address] & 076000) | (Value & 001777);
   }
 
-  State->inputChannel[Address] = Value;
+  state->inputChannel[Address] = Value;
 }
 
-void cpu_write_io(agc_state_t* State, int Address, int Value)
+void cpu_write_io(agc_state_t* state, int Address, int Value)
 {
   //static int Downlink = 0;
 
@@ -610,11 +610,11 @@ void cpu_write_io(agc_state_t* State, int Address, int Value)
     // settings cannot be read back out, so after setting the traps the
     // enable bits are masked out.
     if(Value & 004000)
-      State->trap_31a = 1;
+      state->trap_31a = 1;
     if(Value & 010000)
-      State->trap_31b = 1;
+      state->trap_31b = 1;
     if(Value & 020000)
-      State->trap_32 = 1;
+      state->trap_32 = 1;
 
     Value &= 043777;
   }
@@ -624,16 +624,16 @@ void cpu_write_io(agc_state_t* State, int Address, int Value)
     // Grant via Markus Joachim.  Although channel 033 is an input channel,
     // the CPU writes to it from time to time, to "reset" bits 11-15 to 1.
     // Apparently, these are latched inputs, and this resets the latches.
-    State->inputChannel[Address] |= 076000;
+    state->inputChannel[Address] |= 076000;
 
     // Don't allow the AGC warning input to be reset if the light
     // is still on
-    if(State->warning_filter > WARNING_FILTER_THRESHOLD)
-      State->inputChannel[Address] &= 057777;
+    if(state->warning_filter > WARNING_FILTER_THRESHOLD)
+      state->inputChannel[Address] &= 057777;
 
     // The actual value that was written now doesn't matter, so make sure
     // no changes occur.
-    Value = State->inputChannel[Address];
+    Value = state->inputChannel[Address];
   }
   else if(Address == 077)
   {
@@ -643,7 +643,7 @@ void cpu_write_io(agc_state_t* State, int Address, int Value)
 
     // If the Night Watchman was recently tripped, its CH77 bit
     // is forcibly asserted (unlike all the others) for 1.28s
-    if(State->night_watchman_tripped)
+    if(state->night_watchman_tripped)
       Value |= CH77_NIGHT_WATCHMAN;
   }
   else if(Address == 011 && (Value & 01000))
@@ -652,26 +652,26 @@ void cpu_write_io(agc_state_t* State, int Address, int Value)
     // with a 1. The controlling flip-flop in the AGC also has a hard
     // line to the DSKY's RSET button, so on depression of RSET the
     // light is turned off without need for software intervention.
-    State->restart_light = 0;
+    state->restart_light = 0;
   }
 
-  write_io(State, Address, Value);
-  agc_channel_output(State, Address, Value & 077777);
+  write_io(state, Address, Value);
+  agc_channel_output(state, Address, Value & 077777);
 
   // 2005-06-25 RSB.  DOWNRUPT stuff.  I assume that the 20 ms. between
   // downlink transmissions is due to the time needed for transmitting,
   // so I don't interrupt at a regular rate,  Instead, I make sure that
   // there are 20 ms. between transmissions
   if(Address == 034)
-    State->downlink |= 1;
+    state->downlink |= 1;
   else if(Address == 035)
-    State->downlink |= 2;
-  if(State->downlink == 3)
+    state->downlink |= 2;
+  if(state->downlink == 3)
   {
     //State->InterruptRequests[8] = 1;	// DOWNRUPT.
-    State->downrupt_time_valid = 1;
-    State->downrupt_time = State->cycle_counter + (AGC_PER_SECOND / 50);
-    State->downlink      = 0;
+    state->downrupt_time_valid = 1;
+    state->downrupt_time = state->cycle_counter + (AGC_PER_SECOND / 50);
+    state->downlink      = 0;
   }
 }
 
@@ -681,20 +681,20 @@ void cpu_write_io(agc_state_t* State, int Address, int Value)
 // pointer to the actual word in the simulated memory.  In other words, here
 // we take memory bank-selection into account.
 
-static int16_t* FindMemoryWord(agc_state_t* state, int Address12)
+static int16_t* FindMemoryWord(agc_state_t* state, int addr_12)
 {
   //int PseudoAddress;
-  int      AdjustmentEB, AdjustmentFB;
-  int16_t* Addr;
+  int      adj_eb, adj_fb;
+  int16_t* addr;
 
   // Get rid of the parity bit.
   //Address12 = Address12;
 
   // Make sure the darn thing really is 12 bits.
-  Address12 &= 07777;
+  addr_12 &= 07777;
 
   // Check to see if NEWJOB (67) has been accessed for Night Watchman
-  if(Address12 == 067)
+  if(addr_12 == 067)
   {
     // Address 67 has been accessed in some way. Clear the Night Watchman.
     state->night_watchman = 0;
@@ -703,39 +703,39 @@ static int16_t* FindMemoryWord(agc_state_t* state, int Address12)
   // It should be noted as far as unswitched-erasable and common-fixed memory
   // is concerned, that the following rules actually do result in continuous
   // block of memory that don't have problems in crossing bank boundaries.
-  if(Address12 < 00400) // Unswitched-erasable.
-    return (&state->erasable[0][Address12 & 00377]);
-  else if(Address12 < 01000) // Unswitched-erasable (continued).
-    return (&state->erasable[1][Address12 & 00377]);
-  else if(Address12 < 01400) // Unswitched-erasable (continued).
-    return (&state->erasable[2][Address12 & 00377]);
-  else if(Address12 < 02000) // Switched-erasable.
+  if(addr_12 < 00400) // Unswitched-erasable.
+    return (&state->erasable[0][addr_12 & 00377]);
+  else if(addr_12 < 01000) // Unswitched-erasable (continued).
+    return (&state->erasable[1][addr_12 & 00377]);
+  else if(addr_12 < 01400) // Unswitched-erasable (continued).
+    return (&state->erasable[2][addr_12 & 00377]);
+  else if(addr_12 < 02000) // Switched-erasable.
   {
     // Recall that the parity bit is accounted for in the shift below.
-    AdjustmentEB = (7 & (c(RegEB) >> 8));
-    return (&state->erasable[AdjustmentEB][Address12 & 00377]);
+    adj_eb = (7 & (c(RegEB) >> 8));
+    return (&state->erasable[adj_eb][addr_12 & 00377]);
   }
-  else if(Address12 < 04000) // Fixed-switchable.
+  else if(addr_12 < 04000) // Fixed-switchable.
   {
-    AdjustmentFB = (037 & (c(RegFB) >> 10));
+    adj_fb = (037 & (c(RegFB) >> 10));
     // Account for the superbank bit.
-    if(030 == (AdjustmentFB & 030) && (state->output_channel_7 & 0100) != 0)
-      AdjustmentFB += 010;
+    if(030 == (adj_fb & 030) && (state->output_channel_7 & 0100) != 0)
+      adj_fb += 010;
   }
-  else if(Address12 < 06000) // Fixed-fixed.
-    AdjustmentFB = 2;
+  else if(addr_12 < 06000) // Fixed-fixed.
+    adj_fb = 2;
   else // Fixed-fixed (continued).
-    AdjustmentFB = 3;
+    adj_fb = 3;
 
-  Addr = (&state->fixed[AdjustmentFB][Address12 & 01777]);
+  addr = (&state->fixed[adj_fb][addr_12 & 01777]);
 
   if(state->check_parity)
   {
     // Check parity for fixed memory if such checking is enabled
-    uint16_t LinearAddr = AdjustmentFB * 02000 + (Address12 & 01777);
+    uint16_t LinearAddr = adj_fb * 02000 + (addr_12 & 01777);
     int16_t  ExpectedParity =
       (state->parities[LinearAddr / 32] >> (LinearAddr % 32)) & 1;
-    int16_t Word = ((*Addr) << 1) | ExpectedParity;
+    int16_t Word = ((*addr) << 1) | ExpectedParity;
     Word ^= (Word >> 8);
     Word ^= (Word >> 4);
     Word ^= (Word >> 2);
@@ -749,7 +749,7 @@ static int16_t* FindMemoryWord(agc_state_t* state, int Address12)
       state->inputChannel[077] |= CH77_PARITY_FAIL;
     }
   }
-  return Addr;
+  return addr;
 }
 
 // Same thing, basically, but for collecting coverage data.
@@ -759,7 +759,7 @@ CollectCoverage (agc_state_t * State, int Address12, int Read, int Write, int In
 {
   int AdjustmentEB, AdjustmentFB;
 
-  if (!CoverageCounts)
+  if (!COVERAGE_COUNTS)
   return;
 
   // Get rid of the parity bit.
@@ -827,69 +827,69 @@ CollectCoverage (agc_state_t * State, int Address12, int Read, int Write, int In
 // and an offset into that bank, while AssignFromPointer simply uses a pointer
 // directly to the simulated memory location.
 
-static void Assign(agc_state_t* State, int Bank, int Offset, int Value)
+static void assign(agc_state_t* state, int bank, int offset, int value)
 {
-  if(Bank < 0 || Bank >= 8)
+  if(bank < 0 || bank >= 8)
     return; // Non-erasable memory.
-  if(Offset < 0 || Offset >= 0400)
+  if(offset < 0 || offset >= 0400)
     return;
-  if(CoverageCounts)
-    ErasableWriteCounts[Bank][Offset]++;
-  if(Bank == 0)
+  if(COVERAGE_COUNTS)
+    ErasableWriteCounts[bank][offset]++;
+  if(bank == 0)
   {
-    switch(Offset)
+    switch(offset)
     {
       case RegZ:
-        State->next_z = Value;
+        state->next_z = value;
         break;
       case RegCYR:
-        Value &= 077777;
-        if(0 != (Value & 1))
-          Value = (Value >> 1) | 040000;
+        value &= 077777;
+        if(0 != (value & 1))
+          value = (value >> 1) | 040000;
         else
-          Value = (Value >> 1);
+          value = (value >> 1);
         break;
       case RegSR:
-        Value &= 077777;
-        if(0 != (Value & 040000))
-          Value = (Value >> 1) | 040000;
+        value &= 077777;
+        if(0 != (value & 040000))
+          value = (value >> 1) | 040000;
         else
-          Value = (Value >> 1);
+          value = (value >> 1);
         break;
       case RegCYL:
-        Value &= 077777;
-        if(0 != (Value & 040000))
-          Value = (Value << 1) + 1;
+        value &= 077777;
+        if(0 != (value & 040000))
+          value = (value << 1) + 1;
         else
-          Value = (Value << 1);
+          value = (value << 1);
         break;
       case RegEDOP:
-        Value &= 077777;
-        Value = ((Value >> 7) & 0177);
+        value &= 077777;
+        value = ((value >> 7) & 0177);
         break;
       case RegZERO:
-        Value = AGC_P0;
+        value = AGC_P0;
         break;
       default:
         // No editing of the Value is needed in this case.
         break;
     }
-    if(Offset >= REG16 || (Offset >= 020 && Offset <= 023))
-      State->erasable[0][Offset] = Value & 077777;
+    if(offset >= REG16 || (offset >= 020 && offset <= 023))
+      state->erasable[0][offset] = value & 077777;
     else
-      State->erasable[0][Offset] = Value & 0177777;
+      state->erasable[0][offset] = value & 0177777;
   }
   else
-    State->erasable[Bank][Offset] = Value & 077777;
+    state->erasable[bank][offset] = value & 077777;
 }
 
-static void AssignFromPointer(agc_state_t* State, int16_t* Pointer, int Value)
+static void assign_from_pointer(agc_state_t* state, int16_t* pointer, int value)
 {
   int Address;
-  Address = Pointer - State->erasable[0];
+  Address = pointer - state->erasable[0];
   if(Address >= 0 && Address < 04000)
   {
-    Assign(State, Address / 0400, Address & 0377, Value);
+    assign(state, Address / 0400, Address & 0377, value);
     return;
   }
 }
@@ -1014,7 +1014,7 @@ PutQ (agc_state_t * State, int Value)
 // contains overflow or not.  To do this for the accumulator itself,
 // use ValueOverflowed(GetAccumulator(State)).
 
-static int16_t ValueOverflowed(int Value)
+static int16_t value_ovf(int Value)
 {
   switch(Value & 0140000)
   {
@@ -1054,7 +1054,7 @@ int sign_extend(int16_t Word)
 // and making sure all of the signs are okay when one or more words are zero.
 // A sign-extension is added a la the normal accumulator.
 
-static int SpToDecent(int16_t* LsbSP)
+static int sp_to_decent(int16_t* LsbSP)
 {
   int16_t Msb, Lsb;
   int     Value, Complement;
@@ -1114,7 +1114,7 @@ static int SpToDecent(int16_t* LsbSP)
   return (Value);
 }
 
-static void DecentToSp(int Decent, int16_t* LsbSP)
+static void decent_to_sp(int Decent, int16_t* LsbSP)
 {
   int Sign;
   Sign   = (Decent & 04000000000);
@@ -1139,7 +1139,7 @@ int add_sp_16(int Addend1, int Addend2)
 
 // Absolute value of an SP value.
 
-static int16_t AbsSP(int16_t Value)
+static int16_t abs_sp(int16_t Value)
 {
   if(040000 & Value)
     return (077777 & ~Value);
@@ -1156,7 +1156,7 @@ static int16_t AbsSP(int16_t Value)
 
 // Negate an SP value.
 
-static int16_t NegateSP(int16_t Value)
+static int16_t neg_sp(int16_t Value)
 {
   return (077777 & ~Value);
 }
@@ -1170,7 +1170,7 @@ static int16_t NegateSP(int16_t Value)
 static int TrapPIPA = 0;
 
 // 1's-complement increment
-int CounterPINC(int16_t* Counter)
+int counter_pinc(int16_t* Counter)
 {
   int16_t i;
   int     Overflow = 0;
@@ -1198,19 +1198,19 @@ int CounterPINC(int16_t* Counter)
 }
 
 // 1's-complement decrement, but only of negative integers.
-int CounterMINC(int16_t* Counter)
+int counter_minc(int16_t* Counter)
 {
   int16_t i;
-  int     Overflow = 0;
+  int     ovf = 0;
   i                = *Counter;
   if(i == (int16_t)040000)
   {
-    Overflow = 1;
+    ovf = 1;
     i        = AGC_M0;
   }
   else
   {
-    Overflow = 0;
+    ovf = 0;
     if(TrapPIPA)
       printf("MINC: %o", i);
     i = ((i - 1) & 077777);
@@ -1222,11 +1222,11 @@ int CounterMINC(int16_t* Counter)
       printf(" %o\n", i);
   }
   *Counter = i;
-  return (Overflow);
+  return (ovf);
 }
 
 // 2's-complement increment.
-int CounterPCDU(int16_t* Counter)
+int counter_pcdu(int16_t* Counter)
 {
   int16_t i;
   int     Overflow = 0;
@@ -1240,21 +1240,21 @@ int CounterPCDU(int16_t* Counter)
 }
 
 // 2's-complement decrement.
-int CounterMCDU(int16_t* Counter)
+int counter_mcdu(int16_t* Counter)
 {
   int16_t i;
-  int     Overflow = 0;
+  int     ovf = 0;
   i                = *Counter;
   if(i == 0)
-    Overflow = 1;
+    ovf = 1;
   i--;
   i &= 077777;
   *Counter = i;
-  return (Overflow);
+  return (ovf);
 }
 
 // Diminish increment.
-int CounterDINC(agc_state_t* State, int CounterNum, int16_t* Counter)
+int counter_dinc(agc_state_t* State, int CounterNum, int16_t* Counter)
 {
   int     RetVal = 0;
   int16_t i;
@@ -1290,7 +1290,7 @@ int CounterDINC(agc_state_t* State, int CounterNum, int16_t* Counter)
 }
 
 // Left-shift increment.
-int CounterSHINC(int16_t* Counter)
+int counter_shinc(int16_t* Counter)
 {
   int16_t i;
   int     Overflow = 0;
@@ -1303,7 +1303,7 @@ int CounterSHINC(int16_t* Counter)
 }
 
 // Left-shift and add increment.
-int CounterSHANC(int16_t* Counter)
+int counter_shanc(int16_t* Counter)
 {
   int16_t i;
   int     Overflow = 0;
@@ -1319,12 +1319,12 @@ int CounterSHANC(int16_t* Counter)
 // AUG, and DIM instructins.  The docs aren't very forthcoming as to
 // which counter registers are affected by this ... but still.
 
-static void InterruptRequests(agc_state_t* state, int16_t Address10, int Sum)
+static void interrupt_requests(agc_state_t* state, int16_t Address10, int Sum)
 {
-  if(ValueOverflowed(Sum) == AGC_P0)
+  if(value_ovf(Sum) == AGC_P0)
     return;
   if(IsReg(Address10, RegTIME1))
-    CounterPINC(&c(RegTIME2));
+    counter_pinc(&c(RegTIME2));
   else if(IsReg(Address10, RegTIME5))
     state->interrupt_requests[2] = 1;
   else if(IsReg(Address10, RegTIME3))
@@ -1369,9 +1369,9 @@ typedef struct
   int      IntervalType; // 0,1,2,0,1,2,...
   uint64_t NextUpdate; // Cycle count at which next counter update occurs.
   int32_t Counts[MAX_CDU_FIFO_ENTRIES];
-} CduFifo_t;
+} cdu_fifo_t;
 
-static CduFifo_t CduFifos[NUM_CDU_FIFOS]; // For registers 032, 033, and 034.
+static cdu_fifo_t CduFifos[NUM_CDU_FIFOS]; // For registers 032, 033, and 034.
 static int CduChecker = 0; // 0, 1, ..., NUM_CDU_FIFOS-1, 0, 1, ...
 
 // Here's an auxiliary function to add a count to a CDU FIFO.  The only allowed
@@ -1386,9 +1386,9 @@ static int CduChecker = 0; // 0, 1, ..., NUM_CDU_FIFOS-1, 0, 1, ...
 //	021	Upper bits = 10
 //	023	Upper bits = 11
 // The least-significant 30 bits are simply the absolute value of the count.
-static void PushCduFifo(agc_state_t* State, int Counter, int IncType)
+static void push_cdu_fifo(agc_state_t* State, int Counter, int IncType)
 {
-  CduFifo_t* CduFifo;
+  cdu_fifo_t* CduFifo;
   int        Next, Interval;
   int32_t    Base;
   if(Counter < FIRST_CDU || Counter >= FIRST_CDU + NUM_CDU_FIFOS)
@@ -1463,7 +1463,7 @@ static void PushCduFifo(agc_state_t* State, int Counter, int IncType)
 static int sdu_fifo(agc_state_t* State)
 {
   int        Count, RetVal = 0, HighRate, DownCount;
-  CduFifo_t* CduFifo;
+  cdu_fifo_t* CduFifo;
   int16_t*   Ch;
   // See if there are any pending PCDU or MCDU counts we need to apply.  We only
   // check one of the CDUs, and the CDU to check is indicated by CduChecker.
@@ -1478,13 +1478,13 @@ static int sdu_fifo(agc_state_t* State)
     DownCount = (Count & 0x40000000);
     if(DownCount)
     {
-      CounterMCDU(Ch);
+      counter_mcdu(Ch);
       if(CduLog != NULL)
         fprintf(CduLog, ">\t\t" FORMAT_64U " %o 03\n", State->cycle_counter, CduChecker + FIRST_CDU);
     }
     else
     {
-      CounterPCDU(Ch);
+      counter_pcdu(Ch);
       if(CduLog != NULL)
         fprintf(CduLog, ">\t\t" FORMAT_64U " %o 01\n", State->cycle_counter, CduChecker + FIRST_CDU);
     }
@@ -1545,42 +1545,42 @@ void unprogrammed_increment(agc_state_t* State, int Counter, int IncType)
   int      Overflow = 0;
   Counter &= 0x7f;
   Ch = &State->erasable[0][Counter];
-  if(CoverageCounts)
+  if(COVERAGE_COUNTS)
     ErasableWriteCounts[0][Counter]++;
   switch(IncType)
   {
     case 0:
       //TrapPIPA = (Counter >= 037 && Counter <= 041);
-      Overflow = CounterPINC(Ch);
+      Overflow = counter_pinc(Ch);
       break;
     case 1:
     case 021:
       // For the CDUX,Y,Z counters, push the command into a FIFO.
       if(Counter >= FIRST_CDU && Counter < FIRST_CDU + NUM_CDU_FIFOS)
-        PushCduFifo(State, Counter, IncType);
+        push_cdu_fifo(State, Counter, IncType);
       else
-        Overflow = CounterPCDU(Ch);
+        Overflow = counter_pcdu(Ch);
       break;
     case 2:
       //TrapPIPA = (Counter >= 037 && Counter <= 041);
-      Overflow = CounterMINC(Ch);
+      Overflow = counter_minc(Ch);
       break;
     case 3:
     case 023:
       // For the CDUX,Y,Z counters, push the command into a FIFO.
       if(Counter >= FIRST_CDU && Counter < FIRST_CDU + NUM_CDU_FIFOS)
-        PushCduFifo(State, Counter, IncType);
+        push_cdu_fifo(State, Counter, IncType);
       else
-        Overflow = CounterMCDU(Ch);
+        Overflow = counter_mcdu(Ch);
       break;
     case 4:
-      Overflow = CounterDINC(State, Counter, Ch);
+      Overflow = counter_dinc(State, Counter, Ch);
       break;
     case 5:
-      Overflow = CounterSHINC(Ch);
+      Overflow = counter_shinc(Ch);
       break;
     case 6:
-      Overflow = CounterSHANC(Ch);
+      Overflow = counter_shanc(Ch);
       break;
     default:
       break;
@@ -1655,7 +1655,7 @@ static int BurstOutput(agc_state_t* State, int DriveBitMask, int CounterRegister
   return (DriveCountSaved);
 }
 
-static void UpdateDSKY(agc_state_t* State)
+static void update_dsky(agc_state_t* State)
 {
   unsigned LastChannel163 = State->dsky_channel_163;
 
@@ -1754,7 +1754,7 @@ static void SimulateDV(agc_state_t* state, uint16_t divisor)
   // Add 40000 to L
   l = add_sp_16(l, 040000);
   // If this did not cause positive overflow, add one to A
-  if(ValueOverflowed(l) != AGC_P1)
+  if(value_ovf(l) != AGC_P1)
     a = add_sp_16(a, 1);
   // Initialize the remainder with the current value of A
   remainder = a;
@@ -1893,7 +1893,7 @@ int agc_engine(agc_state_t* state)
   state->channel_routine_count = ((state->channel_routine_count + 1) & 017777);
 
   // Update the various hardware-driven DSKY lights
-  UpdateDSKY(state);
+  update_dsky(state);
 
   // Get data from input channels.  Return immediately if a unprogrammed
   // counter-increment was performed.
@@ -2110,20 +2110,20 @@ int agc_engine(agc_state_t* state)
       if(020 == (037 & state->inputChannel[ChanSCALER1]))
       {
         state->extra_delay++;
-        if(CounterPINC(&c(RegTIME1)))
+        if(counter_pinc(&c(RegTIME1)))
         {
           state->extra_delay++;
-          CounterPINC(&c(RegTIME2));
+          counter_pinc(&c(RegTIME2));
         }
         state->extra_delay++;
-        if(CounterPINC(&c(RegTIME3)))
+        if(counter_pinc(&c(RegTIME3)))
           state->interrupt_requests[3] = 1;
       }
       // TIME5 is the same as TIME3, but 5 ms. out of phase.
       if(000 == (037 & state->inputChannel[ChanSCALER1]))
       {
         state->extra_delay++;
-        if(CounterPINC(&c(RegTIME5)))
+        if(counter_pinc(&c(RegTIME5)))
           state->interrupt_requests[2] = 1;
 
         // Synchronously with TIME5, if radar activity is enabled,
@@ -2135,7 +2135,7 @@ int agc_engine(agc_state_t* state)
       if(010 == (037 & state->inputChannel[ChanSCALER1]))
       {
         state->extra_delay++;
-        if(CounterPINC(&c(RegTIME4)))
+        if(counter_pinc(&c(RegTIME4)))
           state->interrupt_requests[4] = 1;
       }
       // TIME6 only increments when it has been enabled via CH13 bit 15.
@@ -2143,7 +2143,7 @@ int agc_engine(agc_state_t* state)
       if(040000 & state->inputChannel[013] && (state->inputChannel[ChanSCALER1] & 01) == 01)
       {
         state->extra_delay++;
-        if(CounterDINC(state, 0, &c(RegTIME6)))
+        if(counter_dinc(state, 0, &c(RegTIME6)))
         {
           state->interrupt_requests[1] = 1;
           // Triggering a T6RUPT disables T6 by clearing the CH13 bit
@@ -2399,7 +2399,7 @@ int agc_engine(agc_state_t* state)
   bb = c(RegBB);
   // Reform 16-bit accumulator and test for overflow in accumulator.
   acc = c(RegA) & 0177777;
-  ovf    = (ValueOverflowed(acc) != AGC_P0);
+  ovf    = (value_ovf(acc) != AGC_P0);
   //Qumulator = GetQ (State);
   //OverflowQ = (ValueOverflowed (Qumulator) != AGC_P0);
 
@@ -2598,7 +2598,7 @@ int agc_engine(agc_state_t* state)
         // Compute the "diminished absolute value", and save in accumulator.
         c(RegA) = dabs(pperand_16);
         // Assign back the read data in case editing is needed
-        AssignFromPointer(state, where_word, pperand_16);
+        assign_from_pointer(state, where_word, pperand_16);
       }
       // Now perform the actual comparison and jump on the basis
       // of it.  There's no explanation I can find as to what
@@ -2608,9 +2608,9 @@ int agc_engine(agc_state_t* state)
       // is already correct, and in the other cases we need to
       // increment it by 2 less because NextZ has already been
       // incremented.
-      if(address_10 < REG16 && ValueOverflowed(ValueK) == AGC_P1)
+      if(address_10 < REG16 && value_ovf(ValueK) == AGC_P1)
         state->next_z += 0;
-      else if(address_10 < REG16 && ValueOverflowed(ValueK) == AGC_M1)
+      else if(address_10 < REG16 && value_ovf(ValueK) == AGC_M1)
         state->next_z += 2;
       else if(pperand_16 == AGC_P0)
         state->next_z += 1;
@@ -2679,11 +2679,11 @@ int agc_engine(agc_state_t* state)
         if(address_10 < REG16)
           c(address_10) = sign_extend(Lsw);
         else
-          AssignFromPointer(state, where_word, Lsw);
+          assign_from_pointer(state, where_word, Lsw);
         if(address_10 < REG16 + 1)
           c(address_10 - 1) = Msw;
         else
-          AssignFromPointer(state, where_word - 1, overflow_corrected(Msw));
+          assign_from_pointer(state, where_word - 1, overflow_corrected(Msw));
       }
       break;
     case 022: // LXCH.
@@ -2698,7 +2698,7 @@ int agc_engine(agc_state_t* state)
         pperand_16 = c(RegL);
         c(RegL)   = c(address_10);
         if(address_10 >= 020 && address_10 <= 023)
-          AssignFromPointer(
+          assign_from_pointer(
             state, where_word, overflow_corrected(0177777 & pperand_16));
         else
           c(address_10) = pperand_16;
@@ -2709,7 +2709,7 @@ int agc_engine(agc_state_t* state)
       {
         where_word = FindMemoryWord(state, address_10);
         pperand_16 = *where_word;
-        AssignFromPointer(
+        assign_from_pointer(
           state, where_word, overflow_corrected(0177777 & c(RegL)));
         c(RegL) = sign_extend(pperand_16);
       }
@@ -2725,8 +2725,8 @@ int agc_engine(agc_state_t* state)
         else
         {
           Sum = add_sp_16(AGC_P1, sign_extend(*where_word));
-          AssignFromPointer(state, where_word, overflow_corrected(Sum));
-          InterruptRequests(state, address_10, Sum);
+          assign_from_pointer(state, where_word, overflow_corrected(Sum));
+          interrupt_requests(state, address_10, Sum);
         }
       }
       break;
@@ -2748,7 +2748,7 @@ int agc_engine(agc_state_t* state)
         else if(address_10 < REG16)
           c(address_10) = acc;
         else
-          AssignFromPointer(state, where_word, overflow_corrected(acc));
+          assign_from_pointer(state, where_word, overflow_corrected(acc));
       }
       break;
     case 030: // CA
@@ -2769,7 +2769,7 @@ int agc_engine(agc_state_t* state)
       }
       where_word = FindMemoryWord(state, address_12);
       c(RegA)   = sign_extend(*where_word);
-      AssignFromPointer(state, where_word, *where_word);
+      assign_from_pointer(state, where_word, *where_word);
       break;
     case 040: // CS
     case 041:
@@ -2793,8 +2793,8 @@ int agc_engine(agc_state_t* state)
         break;
       }
       where_word = FindMemoryWord(state, address_12);
-      c(RegA)   = sign_extend(NegateSP(*where_word));
-      AssignFromPointer(state, where_word, *where_word);
+      c(RegA)   = sign_extend(neg_sp(*where_word));
+      assign_from_pointer(state, where_word, *where_word);
       break;
     case 050: // INDEX
     case 051:
@@ -2858,7 +2858,7 @@ int agc_engine(agc_state_t* state)
       else
       {
         pperand_16 = sign_extend(*where_word);
-        AssignFromPointer(state, where_word, overflow_corrected(c(RegL)));
+        assign_from_pointer(state, where_word, overflow_corrected(c(RegL)));
         c(RegL) = pperand_16;
       }
       c(RegL) = sign_extend(overflow_corrected(c(RegL)));
@@ -2874,7 +2874,7 @@ int agc_engine(agc_state_t* state)
       else
       {
         pperand_16 = sign_extend(where_word[-1]);
-        AssignFromPointer(state, where_word - 1, overflow_corrected(c(RegA)));
+        assign_from_pointer(state, where_word - 1, overflow_corrected(c(RegA)));
         c(RegA) = pperand_16;
       }
       break;
@@ -2890,7 +2890,7 @@ int agc_engine(agc_state_t* state)
       {
         state->next_z = (077777 & acc);
         if(ovf)
-          c(RegA) = sign_extend(ValueOverflowed(acc));
+          c(RegA) = sign_extend(value_ovf(acc));
       }
       else // Not OVSK or TCAA.
       {
@@ -2898,10 +2898,10 @@ int agc_engine(agc_state_t* state)
         if(address_10 < REG16)
           c(address_10) = acc;
         else
-          AssignFromPointer(state, where_word, overflow_corrected(acc));
+          assign_from_pointer(state, where_word, overflow_corrected(acc));
         if(ovf)
         {
-          c(RegA) = sign_extend(ValueOverflowed(acc));
+          c(RegA) = sign_extend(value_ovf(acc));
           state->next_z += AGC_P1;
         }
       }
@@ -2921,7 +2921,7 @@ int agc_engine(agc_state_t* state)
       }
       where_word = FindMemoryWord(state, address_10);
       c(RegA)   = sign_extend(*where_word);
-      AssignFromPointer(state, where_word, overflow_corrected(acc));
+      assign_from_pointer(state, where_word, overflow_corrected(acc));
       break;
     case 060: // AD
     case 061:
@@ -2939,7 +2939,7 @@ int agc_engine(agc_state_t* state)
       {
         where_word   = FindMemoryWord(state, address_12);
         acc = add_sp_16(acc, sign_extend(*where_word));
-        AssignFromPointer(state, where_word, *where_word);
+        assign_from_pointer(state, where_word, *where_word);
       }
       c(RegA) = acc;
       break;
@@ -3036,11 +3036,11 @@ int agc_engine(agc_state_t* state)
 
       AccPair[0] = overflow_corrected(acc);
       AccPair[1] = c(RegL);
-      Dividend   = SpToDecent(&AccPair[1]);
-      DecentToSp(Dividend, &AccPair[1]);
+      Dividend   = sp_to_decent(&AccPair[1]);
+      decent_to_sp(Dividend, &AccPair[1]);
       // Check boundary conditions.
-      AbsA = AbsSP(AccPair[0]);
-      AbsL = AbsSP(AccPair[1]);
+      AbsA = abs_sp(AccPair[0]);
+      AbsL = abs_sp(AccPair[1]);
 
       if(IsA(address_10))
       {
@@ -3076,8 +3076,8 @@ int agc_engine(agc_state_t* state)
         Div16 = sign_extend(*FindMemoryWord(state, address_10));
 
       // Fetch the values;
-      AbsK = AbsSP(overflow_corrected(Div16));
-      if(AbsA > AbsK || (AbsA == AbsK && AbsL != AGC_P0) || ValueOverflowed(Div16) != AGC_P0)
+      AbsK = abs_sp(overflow_corrected(Div16));
+      if(AbsA > AbsK || (AbsA == AbsK && AbsL != AGC_P0) || value_ovf(Div16) != AGC_P0)
       {
         // The divisor is smaller than the dividend, or the divisor has
         // overflow. In both cases, we fall back on a slower simulation
@@ -3194,7 +3194,7 @@ int agc_engine(agc_state_t* state)
         c(RegA)   = sign_extend(pperand_16);
       }
       if(address_10 >= 020 && address_10 <= 023)
-        AssignFromPointer(state, where_word, *where_word);
+        assign_from_pointer(state, where_word, *where_word);
     }
     break;
     case 0122: // QXCH
@@ -3216,7 +3216,7 @@ int agc_engine(agc_state_t* state)
         where_word = FindMemoryWord(state, address_10);
         pperand_16 = overflow_corrected(c(RegQ));
         c(RegQ)   = sign_extend(*where_word);
-        AssignFromPointer(state, where_word, pperand_16);
+        assign_from_pointer(state, where_word, pperand_16);
       }
       break;
     case 0124: // AUG
@@ -3239,8 +3239,8 @@ int agc_engine(agc_state_t* state)
         c(address_10) = Sum;
       else
       {
-        AssignFromPointer(state, where_word, overflow_corrected(Sum));
-        InterruptRequests(state, address_10, Sum);
+        assign_from_pointer(state, where_word, overflow_corrected(Sum));
+        interrupt_requests(state, address_10, Sum);
       }
     }
     break;
@@ -3265,7 +3265,7 @@ int agc_engine(agc_state_t* state)
       if(address_10 < REG16)
         c(address_10) = Sum;
       else
-        AssignFromPointer(state, where_word, overflow_corrected(Sum));
+        assign_from_pointer(state, where_word, overflow_corrected(Sum));
     }
     break;
     case 0130: // DCA
@@ -3294,9 +3294,9 @@ int agc_engine(agc_state_t* state)
       else
         c(RegA) = sign_extend(where_word[-1]);
       if(address_12 >= 020 && address_12 <= 023)
-        AssignFromPointer(state, where_word, where_word[0]);
+        assign_from_pointer(state, where_word, where_word[0]);
       if(address_12 >= 020 + 1 && address_12 <= 023 + 1)
-        AssignFromPointer(state, where_word - 1, where_word[-1]);
+        assign_from_pointer(state, where_word - 1, where_word[-1]);
       break;
     case 0140: // DCS
     case 0141:
@@ -3326,9 +3326,9 @@ int agc_engine(agc_state_t* state)
       else
         c(RegA) = ~sign_extend(where_word[-1]);
       if(address_12 >= 020 && address_12 <= 023)
-        AssignFromPointer(state, where_word, where_word[0]);
+        assign_from_pointer(state, where_word, where_word[0]);
       if(address_12 >= 020 + 1 && address_12 <= 023 + 1)
-        AssignFromPointer(state, where_word - 1, where_word[-1]);
+        assign_from_pointer(state, where_word - 1, where_word[-1]);
       break;
     // For 0150..0157 see the INDEX instruction above.
     case 0160: // SU
@@ -3341,8 +3341,8 @@ int agc_engine(agc_state_t* state)
       {
         where_word = FindMemoryWord(state, address_10);
         acc =
-          add_sp_16(acc, sign_extend(NegateSP(*where_word)));
-        AssignFromPointer(state, where_word, *where_word);
+          add_sp_16(acc, sign_extend(neg_sp(*where_word)));
+        assign_from_pointer(state, where_word, *where_word);
       }
       c(RegA) = acc;
       break;
@@ -3401,7 +3401,7 @@ int agc_engine(agc_state_t* state)
         if(02000000000 & Product)
           Product |= 004000000000;
         // Convert back to DP.
-        DecentToSp(Product, &WordPair[1]);
+        decent_to_sp(Product, &WordPair[1]);
         MsWord = WordPair[0];
         LsWord = WordPair[1];
       }
