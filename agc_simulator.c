@@ -50,6 +50,8 @@
 
 #include "agc_simulator.h"
 
+#include <assert.h>
+
 /** Declare the singleton Simulator object instance */
 static Simulator_t Simulator;
 
@@ -255,6 +257,31 @@ static void SimManageTime(void)
 	else SimSleep();
 }
 
+typedef enum
+{
+  KEY_ZERO = 0,
+  KEY_ONE = 1,
+  KEY_TWO = 2,
+  KEY_THREE = 3,
+  KEY_FOUR = 4,
+  KEY_FIVE = 5,
+  KEY_SIX = 6,
+  KEY_SEVEN = 7,
+  KEY_EIGHT = 8,
+  KEY_NINE = 9,
+  KEY_VERB = 17,
+  KEY_KEY_REL = 25,
+  KEY_CLR = 30,
+  KEY_NOUN = 31,
+  KEY_ENTER = 28,
+} Keyboard;
+
+void
+OutputKeycode (Keyboard Keycode)
+{
+  dsky_channel_output(015, Keycode);
+}
+
 /**
 Execute the simulated CPU.  Expecting to ACCURATELY cycle the simulation every
 11.7 microseconds within Linux (or Win32) is a bit too much, I think.
@@ -267,8 +294,138 @@ is that AGC_PER_SECOND AGC cycles are executed every CLK_TCK clock ticks.
 The timing is thus rather rough-and-ready (i.e., I'm sure it can be improved
 a lot).  It's good enough for me, for NOW, but I'd be happy to take suggestions
 for how to improve it in a reasonably portable way.*/
+int idx = 0;
+Keyboard keys[10] = {
+  KEY_VERB,
+  KEY_THREE,
+  KEY_FIVE,
+  KEY_ENTER
+};
+
+int map[] = {
+ 10,
+ 10, 10,
+ 1,
+ 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+ 4,
+ 10, 10, 10,
+ 7,
+ 10,
+ 0,
+ 10, 10, 10,
+ 2,
+ 10,
+ 3,
+ 6,
+ 8,
+ 5,
+ 9
+};
+
+typedef struct
+{
+  unsigned int plus:1;
+  unsigned int minus:1;
+  unsigned int first:4;
+  unsigned int second:4;
+  unsigned int third:4;
+  unsigned int fourth:4;
+  unsigned int fifth:4;
+} dsky_row_t;
+
+typedef struct
+{
+  int prog;
+  int verb;
+  int noun;
+  dsky_row_t rows[3];
+} dsky_t;
+
+int update_dsky(dsky_t *dsky, uint16_t value)
+{
+  int loc = (value >> 11) & 0x0F;
+  int sign = (value >> 10) & 1;
+  int left = map[(value >> 5) & 0x1F];
+  int right = map[value & 0x1F];
+
+  switch (loc)
+  {
+  case 1:
+    dsky->rows[2].fifth = right;
+    dsky->rows[2].fourth = left;
+    dsky->rows[2].minus |= sign;
+    break;
+  case 2:
+    dsky->rows[2].third = right;
+    dsky->rows[2].second = left;
+    dsky->rows[2].plus = sign;
+    break;
+  case 3:
+    dsky->rows[2].first = left;
+    dsky->rows[1].fifth = right;
+    break;
+  case 4:
+    dsky->rows[1].fourth = right;
+    dsky->rows[1].third = left;
+    dsky->rows[1].minus = sign;
+    break;
+  case 5:
+    dsky->rows[1].second = right;
+    dsky->rows[1].first = left;
+    dsky->rows[1].plus = sign;
+    break;
+  case 6:
+    dsky->rows[0].fifth = right;
+    dsky->rows[0].fourth = left;
+    dsky->rows[0].minus = sign;
+    break;
+  case 7:
+    dsky->rows[0].third = right;
+    dsky->rows[0].second = left;
+    dsky->rows[0].plus = sign;
+    break;
+  case 8:
+    dsky->rows[0].first = right;
+    break;
+  case 9:
+    dsky->noun = left << 4 | right;
+    break;
+  case 10:
+    dsky->verb = left << 4 | right;
+    break;
+  case 11:
+    dsky->prog = left << 4 | right;
+    break;
+  default:
+    return 0;
+  }
+
+  return 1;
+}
+
+char digit2char(unsigned int digit)
+{
+  if (digit >= 10) return ' ';
+  return '0' + digit;
+}
+
+void print_dsky_row(dsky_row_t *row)
+{
+  printf("%c%c%c%c%c%c\n", row->minus ? '-' : row->plus ? '+' : ' ', digit2char(row->first), digit2char(row->second), digit2char(row->third), digit2char(row->fourth), digit2char(row->fifth));
+}
+
+void print_dsky(dsky_t *dsky)
+{
+  printf("PR VB NO\n");
+  printf("%c%c %c%c %c%c\n", digit2char(dsky->prog >> 4), digit2char(dsky->prog & 0x7), digit2char(dsky->verb >> 4), digit2char(dsky->verb & 0x7d), digit2char(dsky->noun >> 4), digit2char(dsky->noun & 0x7));
+  print_dsky_row(&dsky->rows[0]);
+  print_dsky_row(&dsky->rows[1]);
+  print_dsky_row(&dsky->rows[2]);
+}
+
 void SimExecute(void)
 {
+  dsky_t dsky = {0};
 	while(1)
 	{
 		/* Manage the Simulated Time */
@@ -279,8 +436,27 @@ void SimExecute(void)
 			/* Execute a cycle of the AGC engine */
 			SimExecuteEngine();
 
-			/* Adjust the CycleCount */
-			SimSetCycleCount(SIM_CYCLECOUNT_INC);
+		  int channel;
+		  int value;
+		  while (dsky_channel_input(&channel, &value))
+		  {
+		    if (channel == 010)
+		    {
+          if (update_dsky(&dsky, value))
+          {
+		        print_dsky(&dsky);
+          }
+		    }
+		  }
+
+		  if (Simulator.CycleCount % 10000000 == 0)
+		  {
+        if (idx < 4)
+		      OutputKeycode(keys[idx++]);
+		  }
+
+		  /* Adjust the CycleCount */
+		  SimSetCycleCount(SIM_CYCLECOUNT_INC);
 		}
 	}
 }

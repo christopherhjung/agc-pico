@@ -1887,7 +1887,6 @@ agc_engine (agc_t * State)
   int JustTookBZF = 0;
   int JustTookBZMF = 0;
 
-
   sExtraCode = 0;
 
   // For DOWNRUPT

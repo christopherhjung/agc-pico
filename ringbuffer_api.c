@@ -150,8 +150,9 @@ agc_channel_input (agc_t* State)
       WriteIO (State, packet.channel, packet.value);
 
       // If this is a keystroke from the DSKY, generate an interrupt req.
-      if (packet.channel == 015)
+      if (packet.channel == 015){
         State->InterruptRequests[5] = 1;
+      }
       // If this is on fictitious input channel 0173, then the data
       // should be placed in the INLINK counter register, and an
       // UPRUPT interrupt request should be set.
@@ -193,6 +194,17 @@ int dsky_channel_input (int* channel, int* value)
 
   *channel = packet.channel;
   *value = packet.value;
+  return 1;
+}
+
+int dsky_channel_output (int channel, int value)
+{
+  Packet packet = {
+    .channel = channel,
+    .value = value
+  };
+
+  return ringbuffer_put (&ringbuffer_in, (unsigned char*)&packet);
 }
 
 

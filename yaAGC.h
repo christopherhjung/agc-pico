@@ -117,12 +117,6 @@ extern "C" {
 //--------------------------------------------------------------------------
 // Function prototypes.
 
-int FormIoPacket (int Channel, int Value, unsigned char *Packet);
-int ParseIoPacket (unsigned char *Packet, int *Channel, int *Value,
-		   int *uBit);
-int FormIoPacketAGS (int Type, int Data, unsigned char *Packet);
-int ParseIoPacketAGS (unsigned char *Packet, int *Type, int *Data);
-
 #ifndef WASI
 int InitializeSocketSystem (void);
 int EstablishSocket (unsigned short portnum, int MaxClients);

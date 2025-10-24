@@ -594,6 +594,7 @@ double GetUSP (int *Ptr, int Scale);
 void agc_channel_output (agc_t * State, int channel, int value);
 int agc_channel_input (agc_t * State);
 int dsky_channel_input (int* channel, int* value);
+int dsky_channel_output (int channel, int value);
 void ChannelRoutine (agc_t *State);
 void ChannelRoutineGeneric (void *State, void (*UpdatePeripherals) (void *, Client_t *));
 void ShiftToDeda (agc_t *State, int Data);
