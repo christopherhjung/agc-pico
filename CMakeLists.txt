@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 
 project(VAGC)
 
-set(VAGC_src main.c agc_cli.c agc_simulator.c nbfgets.c
+set(VAGC_src main.c agc_cli.c agc_simulator.c
 NormalizeSourceName.c checkdec.c agc_engine_init.c agc_engine.c rfopen.c
   ringbuffer_api.c ringbuffer.c DecodeDigitalDownlink.c dsky.c)
 
