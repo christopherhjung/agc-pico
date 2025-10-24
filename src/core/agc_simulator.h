@@ -36,21 +36,11 @@
                 08/04/16 OH     Fixed the GPL statement and old user-id
  */
 #pragma once
-#ifdef WIN32
-#include <sys/time.h>
-#include <windows.h>
-#include <winsock2.h>
-#define LB "\r\n"
-#else
-#include <sys/times.h>
-#include <time.h>
-#define LB ""
-#endif
 
 #include "agc.h"
 #include "agc_engine.h"
 
-#if false
+#ifdef PLATFORMIO
 struct tms {
   clock_t tms_utime;  /* user time */
   clock_t tms_stime;  /* system time */
@@ -60,7 +50,12 @@ struct tms {
 
 #define _SC_CLK_TCK (1000)
 #define sysconf(x) (x)
-#define times(p) (clock_t) GetTickCount()
+#define times(p) (clock_t) 0
+
+#else
+
+#include <sys/times.h>
+#include <time.h>
 
 #endif
 

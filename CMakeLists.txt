@@ -9,7 +9,6 @@ set(VAGC_src
   src/core/agc_simulator.c
   src/core/agc_engine_init.c
   src/core/agc_engine.c
-  src/core/rfopen.c
   src/core/agc_io_handler.c
   src/core/ringbuffer.c
   src/core/dsky.c

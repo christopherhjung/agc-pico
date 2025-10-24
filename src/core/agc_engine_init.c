@@ -106,8 +106,6 @@
 
 int initializeSunburst37 = 0;
 
-FILE* rfopen(const char* Filename, const char* mode);
-
 //---------------------------------------------------------------------------
 // Returns:
 //      0 -- success.
@@ -135,7 +133,7 @@ int agc_load_binfile(agc_state_t* state, const char* RomImage)
   // The following sequence of steps loads the ROM image into the simulated
   // core memory, in what I think is a pretty obvious way.
 
-  fp = rfopen(RomImage, "rb");
+  fp = fopen(RomImage, "rb");
   if(fp == NULL)
   {
     RetVal = 1;

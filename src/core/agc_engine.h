@@ -359,7 +359,6 @@ int     agc_load_binfile(agc_state_t* Stage, const char* RomImage);
 int     read_io(agc_state_t* state, int Address);
 void    write_io(agc_state_t* state, int Address, int Value);
 void    cpu_write_io(agc_state_t* state, int Address, int Value);
-FILE*   rfopen(const char* Filename, const char* mode);
 int16_t overflow_corrected(int Value);
 int     sign_extend(int16_t Word);
 int     add_sp_16(int Addend1, int Addend2);

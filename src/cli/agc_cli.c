@@ -154,8 +154,6 @@ static void CliShowUsage(void)
     "so the built-in self-test would fail.)\n\n");
 }
 
-extern FILE* rfopen(const char* Filename, const char* mode);
-
 /**
 This function parses the specified configuration file.
 It loads its contents not a lot of checking is done here.
@@ -168,7 +166,7 @@ int CliParseCfg(char* Filename)
   char  Logic;
   FILE* fin;
 
-  fin = rfopen(Filename, "r");
+  fin = fopen(Filename, "r");
   if(fin)
   {
     Result = 0;
