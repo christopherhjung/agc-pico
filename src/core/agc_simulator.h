@@ -47,8 +47,8 @@
 #define LB ""
 #endif
 
+#include "agc.h"
 #include "agc_engine.h"
-#include "yaAGC.h"
 
 #if false
 struct tms {

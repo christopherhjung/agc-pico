@@ -443,8 +443,8 @@
 typedef unsigned short uint16_t;
 typedef int            int32_t;
 #endif
+#include "agc.h"
 #include "core/agc_engine.h"
-#include "yaAGC.h"
 #if 0
 #include "agc_symtab.h"
 #endif

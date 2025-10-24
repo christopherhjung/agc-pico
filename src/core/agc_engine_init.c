@@ -96,14 +96,13 @@
  * 		01/29/24 MAS	Added initialization of RadarGateCounter.
  */
 
-// For Orbiter.
-#ifndef AGC_SOCKET_ENABLED
+#pragma once
 
 #include <stdio.h>
 #include <string.h>
 
+#include "agc.h"
 #include "agc_engine.h"
-#include "yaAGC.h"
 
 int initializeSunburst37 = 0;
 
@@ -125,11 +124,11 @@ FILE* rfopen(const char* Filename, const char* mode);
 // If AllOrErasable == 0, then only the erasable memory is initialized from the
 // core-dump file.
 
-int agc_load_binfile(agc_state_t* State, const char* RomImage)
+int agc_load_binfile(agc_state_t* state, const char* RomImage)
 
 {
   FILE* fp = NULL;
-  int   Bank;
+  int   bank;
   int   m, n, i, j;
   int   RetVal = 0;
 
@@ -159,21 +158,21 @@ int agc_load_binfile(agc_state_t* State, const char* RomImage)
   }
 
   fseek(fp, 0, SEEK_SET);
-  if(State == NULL)
+  if(state == NULL)
   {
     RetVal = 4;
     goto Done;
   }
 
-  State->check_parity = 0;
-  memset(&State->parities, 0, sizeof(State->parities));
+  state->check_parity = 0;
+  memset(&state->parities, 0, sizeof(state->parities));
 
-  Bank = 2;
-  for(Bank = 2, j = 0, i = 0; i < n; i++)
+  bank = 2;
+  for(bank = 2, j = 0, i = 0; i < n; i++)
   {
     unsigned char In[2];
-    uint8_t       Parity;
-    uint16_t      RawValue;
+    uint8_t       parity;
+    uint16_t      raw_value;
     m = fread(In, 1, 2, fp);
     if(m != 2)
     {
@@ -183,37 +182,37 @@ int agc_load_binfile(agc_state_t* State, const char* RomImage)
     // Within the input file, the fixed-memory banks are arranged in the order
     // 2, 3, 0, 1, 4, 5, 6, 7, ..., 35.  Therefore, we have to take a little care
     // reordering the banks.
-    if(Bank > 35)
+    if(bank > 35)
     {
       RetVal = 2;
       goto Done;
     }
-    RawValue = (In[0] * 256 + In[1]);
-    Parity   = RawValue & 1;
+    raw_value = (In[0] * 256 + In[1]);
+    parity   = raw_value & 1;
 
-    State->fixed[Bank][j] = RawValue >> 1;
-    State->parities[(Bank * 02000 + j) / 32] |= Parity << (j % 32);
+    state->fixed[bank][j] = raw_value >> 1;
+    state->parities[(bank * 02000 + j) / 32] |= parity << (j % 32);
     j++;
 
     // If any of the parity bits are actually set, this must be a ROM built with
     // --hardware. Enable parity checking.
-    if(Parity)
-      State->check_parity = 1;
+    if(parity)
+      state->check_parity = 1;
 
     if(j == 02000)
     {
       j = 0;
       // Bank filled.  Advance to next fixed-memory bank.
-      if(Bank == 2)
-        Bank = 3;
-      else if(Bank == 3)
-        Bank = 0;
-      else if(Bank == 0)
-        Bank = 1;
-      else if(Bank == 1)
-        Bank = 4;
+      if(bank == 2)
+        bank = 3;
+      else if(bank == 3)
+        bank = 0;
+      else if(bank == 0)
+        bank = 1;
+      else if(bank == 1)
+        bank = 4;
       else
-        Bank++;
+        bank++;
     }
   }
 
@@ -430,4 +429,3 @@ Done:
 //-------------------------------------------------------------------------------
 // A function for creating a core-dump which can be read by agc_engine_init.
 
-#endif // AGC_SOCKET_ENABLED

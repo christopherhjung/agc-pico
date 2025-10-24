@@ -44,7 +44,7 @@
 */
 
 #include "agc_engine.h"
-#include "core/yaAGC.h"
+#include "core/agc.h"
 #include "ringbuffer.h"
 
 int LastRhcPitch, LastRhcYaw, LastRhcRoll;

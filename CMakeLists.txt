@@ -10,14 +10,14 @@ set(VAGC_src
   src/core/agc_engine_init.c
   src/core/agc_engine.c
   src/core/rfopen.c
-  src/core/ringbuffer_api.c
+  src/core/agc_io_handler.c
   src/core/ringbuffer.c
   src/core/dsky.c
 )
 
-add_executable(yaAGC ${VAGC_src})
-target_compile_definitions(yaAGC PRIVATE NVER="${NVER}" NOREADLINE="yes")
-target_link_libraries(yaAGC PRIVATE m)
-target_include_directories(yaAGC PRIVATE src)
+add_executable(agc ${VAGC_src})
+target_compile_definitions(agc PRIVATE NVER="${NVER}" NOREADLINE="yes")
+target_link_libraries(agc PRIVATE m)
+target_include_directories(agc PRIVATE src)
 
-install(TARGETS yaAGC)
+install(TARGETS agc)
