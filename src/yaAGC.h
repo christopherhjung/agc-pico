@@ -57,62 +57,8 @@ extern "C" {
 #ifndef YAAGC_H
 #define YAAGC_H
 
-#if defined(__APPLE_CC__) && !defined(unix)
-#define unix
-#endif
-
-// Figure out the right include-files for socket stuff.
-#if defined(unix) || defined(WASI)
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <stdint.h>
-
-#ifndef WASI
-#include <netdb.h>
-#endif
-
-#ifdef __APPLE_CC__
 #define FORMAT_64U "%llu"
 #define FORMAT_64O "%llo"
-#elif !defined(__WORDSIZE)
-#define FORMAT_64U "%llu"
-#define FORMAT_64O "%llo"
-#elif __WORDSIZE < 64
-#define FORMAT_64U "%llu"
-#define FORMAT_64O "%llo"
-#else
-#define FORMAT_64U "%lu"
-#define FORMAT_64O "%lo"
-#endif
-
-#elif defined(WIN32)
-
-#include <winsock2.h>
-#include <windows.h>
-
-#define FORMAT_64U "%llu"
-#define FORMAT_64O "%llo"
-
-#elif defined(__embedded__)
-
-#define FORMAT_64U "%llu"
-#define FORMAT_64O "%llo"
-
-#elif defined(SDCC)
-#elif defined(WASI)
-
-#else
-
-#error Sorry, cannot determine the target operating system.
-#endif
-#ifndef MSG_NOSIGNAL
-#define MSG_NOSIGNAL 0
-
-#endif
 
 //--------------------------------------------------------------------------
 // Function prototypes.

@@ -44,16 +44,14 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "yaAGC.h"
 #include "agc_cli.h"
 #include "agc_engine.h"
 #include "dsky.h"
+#include "yaAGC.h"
 
 #include "agc_simulator.h"
 
 #include <assert.h>
-#include <termios.h>
-#include <sys/errno.h>
 
 /** Declare the singleton Simulator object instance */
 static Simulator_t Simulator;

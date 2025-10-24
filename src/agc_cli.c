@@ -38,11 +38,11 @@
  *              05/30/17 RSB	Added --initialize-sunburst-37 option.
  */
 
-#include <string.h>
+#include "agc_cli.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include "agc_cli.h"
 #include "agc_engine.h"
 
 /* Some legacy vars for now */

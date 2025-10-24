@@ -101,8 +101,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "yaAGC.h"
 #include "agc_engine.h"
+#include "yaAGC.h"
 
 int initializeSunburst37 = 0;
 

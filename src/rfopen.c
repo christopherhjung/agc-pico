@@ -45,8 +45,8 @@
 				to avoid a compiler warning.
 */
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "agc_engine.h"
 

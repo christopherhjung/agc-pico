@@ -51,8 +51,8 @@
 #define LB ""
 #endif
 
-#include "yaAGC.h"
 #include "agc_engine.h"
+#include "yaAGC.h"
 
 #ifdef WIN32
 struct tms {

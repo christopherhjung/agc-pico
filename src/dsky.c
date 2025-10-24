@@ -1,13 +1,12 @@
 #include "dsky.h"
-#include "dsky.h"
 
 #include <sys/fcntl.h>
 #include <termios.h>
 #include <unistd.h>
 
-#include "agc_engine.h"
-#include "ringbuffer.h"
 #include <string.h>
+#include "ringbuffer.h"
+#include "agc_engine.h"
 
 int kbhit() {
   struct termios oldt, newt;
