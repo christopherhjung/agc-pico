@@ -133,7 +133,6 @@
 
 */
 
-#ifndef AGC_SOCKET_ENABLED
 
 #ifdef __cplusplus
 extern "C" {
@@ -437,7 +436,6 @@ typedef struct
 } agc_t;
 
 // Stuff for --debug-dsky mode.
-#define MAX_DEBUG_RULES 256
 typedef struct
 {
   int KeyCode;
@@ -445,115 +443,31 @@ typedef struct
   int Value;
   char Logic;
 } DebugRule_t;
-#ifdef AGC_ENGINE_C
-int DebugDsky = 0;
-int InhibitAlarms = 0;
-int ShowAlarms = 0;
-int NumDebugRules = 0;
-DebugRule_t DebugRules[MAX_DEBUG_RULES];
-#else
 extern int DebugDsky;
 extern int InhibitAlarms;
 extern int ShowAlarms;
 extern int NumDebugRules;
-extern DebugRule_t DebugRules[MAX_DEBUG_RULES];
-extern int initializeSunburst37;
-#endif
 
 // Stuff for --debug mode.
-#define MAX_BACKTRACE_POINTS 100
-#define BACKTRACES_PER_LINE 5
-typedef struct {
-  uint64_t /* unsigned long long */ CycleCounter;
-  int16_t Erasable[8][0400];	// Banks 0,1,2 are "unswitched erasable".
-  int16_t InputChannel[NUM_CHANNELS];
-  int16_t OutputChannel7;
-  int16_t OutputChannel10[16];
-  int16_t IndexValue;
-  int8_t InterruptRequests[1 + NUM_INTERRUPT_TYPES];
-  int8_t DueToInterrupt;	// Indicates interrupt type causing jump (0 if not).
-  unsigned ExtraCode:1;		// Set by the "Extend" instruction.
-  unsigned AllowInterrupt:1;	// Set when interrupts are enabled.
-  //unsigned RegA16:1;		// Bit "16" of register A.
-  unsigned InIsr:1;		// Set when in an ISR, reset when in normal code.
-  unsigned SubstituteInstruction:1;	// Use BBRUPT register.
-  //unsigned RegQ16:1;		// Bit "16" of register Q.
-} BacktracePoint_t;
 
-typedef struct
-{
-  int Socket;
-  unsigned char Packet[4];
-  int Size;
-  int ChannelMasks[256];
-  //int DedaBufferCount;
-  //int DedaBufferWanted;
-  //int DedaBufferReadout;
-  //int DedaBufferDefault;
-  //int DedaBuffer[9];
-} Client_t;
-
-#define DEFAULT_MAX_CLIENTS 10
-
-#ifdef AGC_ENGINE_C
-int SingleStepCounter = -2;		// -2 when not in --debug mode.
-int BacktraceInitialized = 0;		// Becomes -1 on error.
-// We have a backtrace circular buffer, in which we place an entry every
-// time an instruction is hit that may branch. The buffer is updated only
-// if we're in --debug mode.
-BacktracePoint_t *BacktracePoints = NULL;
-int BacktraceNextAdd = 0;
-int BacktraceCount = 0;
-// MAX_CLIENTS is the maximum number of hardware simulations which can be
-// attached.  The DSKY is always one, presumably.  The array is a list of
-// the sockets used for the clients.  Thus stuff shown below is the
-// DEFAULT setup.  The max number of clients can be change during runtime
-// initialization by setting MAX_CLIENTS to a different number, allocating
-// new arrays of clients and sockets corresponding to the new size, and
-// then pointing the Clients and ServerSockets pointers at those arrays.
-int MAX_CLIENTS = DEFAULT_MAX_CLIENTS;
-static Client_t DefaultClients[DEFAULT_MAX_CLIENTS];
-static int DefaultSockets[DEFAULT_MAX_CLIENTS];
-Client_t *Clients = DefaultClients;
-int *ServerSockets = DefaultSockets;
-int NumServers = 0;
-int SocketInterlaceReload = 50;
-int DebugDeda = 0, DedaQuiet = 0;
-int DedaMonitor = 0;
+int BacktraceInitialized;
+int BacktraceNextAdd;
+int BacktraceCount;
+int MAX_CLIENTS;
+int *ServerSockets;
+int NumServers;
+int DebugDeda, DedaQuiet;
+int DedaMonitor;
 int DedaAddress;
 uint64_t /* unsigned long long */ DedaWhen;
 int DownlinkListBuffer[MAX_DOWNLINK_LIST];
-int DownlinkListCount = 0, DownlinkListExpected = 0, DownlinkListZero = -1;
-ProcessDownlinkList_t *ProcessDownlinkList = NULL;
-int CmOrLm = 0;	// Default is 0 (LM); other choice is 1 (CM)
-int Sundance = 0;
+int DownlinkListCount, DownlinkListExpected, DownlinkListZero;
+ProcessDownlinkList_t *ProcessDownlinkList;
+int CmOrLm;
+int Sundance;
 char Sbuffer[SHEIGHT][SWIDTH + 1];
-int Sheight = DEFAULT_SHEIGHT, Swidth = DEFAULT_SWIDTH;
-int LastRhcPitch = 0, LastRhcYaw = 0, LastRhcRoll = 0;
-#else //AGC_ENGINE_C
-extern int SingleStepCounter;
-extern int BacktraceInitialized;
-extern BacktracePoint_t *BacktracePoints;
-extern int BacktraceNextAdd;
-extern int BacktraceCount;
-extern int MAX_CLIENTS;
-extern Client_t *Clients;
-extern int *ServerSockets;
-extern int NumServers;
-extern int SocketInterlaceReload;
-extern int DebugDeda, DedaQuiet;
-extern int DedaMonitor;
-extern int DedaAddress;
-extern uint64_t /* unsigned long long */ DedaWhen;
-extern int DownlinkListBuffer[MAX_DOWNLINK_LIST];
-extern int DownlinkListCount, DownlinkListExpected, DownlinkListZero;
-extern ProcessDownlinkList_t *ProcessDownlinkList;
-extern int CmOrLm;
-extern int Sundance;
-extern char Sbuffer[SHEIGHT][SWIDTH + 1];
-extern int Sheight, Swidth;
-extern int LastRhcPitch, LastRhcYaw, LastRhcRoll;
-#endif //AGC_ENGINE_C
+int Sheight, Swidth;
+int LastRhcPitch, LastRhcYaw, LastRhcRoll;
 
 #ifndef DECODE_DIGITAL_DOWNLINK_C
 extern Swrite_t *SwritePtr;
@@ -596,7 +510,6 @@ int agc_channel_input (agc_t * State);
 int dsky_channel_input (int* channel, int* value);
 int dsky_channel_output (int channel, int value);
 void ChannelRoutine (agc_t *State);
-void ChannelRoutineGeneric (void *State, void (*UpdatePeripherals) (void *, Client_t *));
 void ShiftToDeda (agc_t *State, int Data);
 void RequestRadarData (agc_t *State);
 
@@ -606,4 +519,3 @@ void RequestRadarData (agc_t *State);
 }
 #endif
 
-#endif // AGC_SOCKET_ENABLED

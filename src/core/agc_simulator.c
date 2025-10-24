@@ -140,7 +140,6 @@ int SimInitialize(Options_t* Options)
 
 	/* Set the basic simulator variables */
 	Simulator.Options = Options;
-	Simulator.DebugRules = DebugRules;
 	Simulator.DumpInterval = Options->dump_time * sysconf (_SC_CLK_TCK);
 
 	/* Set legacy Option variables */
@@ -149,11 +148,6 @@ int SimInitialize(Options_t* Options)
 	DedaQuiet = Options->deda_quiet;
 	InhibitAlarms = Options->inhibit_alarms;
 	ShowAlarms = Options->show_alarms;
-	initializeSunburst37 = Options->initializeSunburst37;
-
-	//Simulator.DumpInterval = Simulator.DumpInterval;
-	SocketInterlaceReload = Options->interlace;
-
 	/* If we are not in quiet mode display the version info */
 
 	/* Initialize the AGC Engine */

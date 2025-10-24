@@ -436,7 +436,6 @@
  * on the same PC -- for example to simulation a CM and LM simultaneously.
  */
 
-#define AGC_ENGINE_C
 //#include <errno.h>
 //#include <stdlib.h>
 #include <stdio.h>
@@ -546,6 +545,11 @@ FILE *CduLog = NULL;
 #define WARNING_FILTER_DECREMENT     15
 #define WARNING_FILTER_MAX       140000
 #define WARNING_FILTER_THRESHOLD  20000
+
+int DebugDsky = 0;
+int InhibitAlarms = 0;
+int ShowAlarms = 0;
+int NumDebugRules = 0;
 
 //-----------------------------------------------------------------------------
 // Functions for reading or writing from/to i/o channels.  The reason we have

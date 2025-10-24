@@ -152,13 +152,6 @@ int CliParseCfg (char *Filename)
 				    Logic != '|' && Logic != '^') continue;
 				if (Value != (Value & 0x7FFF)) continue;
 				if (KeyCode < 0 || KeyCode > 31) continue;
-				if (NumDebugRules >= MAX_DEBUG_RULES) break;
-
-				/* Set the Debug Rules */
-				DebugRules[NumDebugRules].KeyCode = KeyCode;
-				DebugRules[NumDebugRules].Channel = Channel;
-				DebugRules[NumDebugRules].Logic = Logic;
-				DebugRules[NumDebugRules].Value = Value;
 				NumDebugRules++;
 			}
 			else if (!strcmp (s, "LMSIM")) CmOrLm = 0;
