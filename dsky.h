@@ -4,7 +4,6 @@
 
 typedef enum
 {
-  KEY_ZERO = 0,
   KEY_ONE = 1,
   KEY_TWO = 2,
   KEY_THREE = 3,
@@ -14,11 +13,13 @@ typedef enum
   KEY_SEVEN = 7,
   KEY_EIGHT = 8,
   KEY_NINE = 9,
+  KEY_ZERO = 16,
   KEY_VERB = 17,
+  KEY_RSET = 18,
   KEY_KEY_REL = 25,
+  KEY_ENTER = 28,
   KEY_CLR = 30,
   KEY_NOUN = 31,
-  KEY_ENTER = 28,
 } Keyboard;
 
 void dsky_keyboard_press (Keyboard Keycode);

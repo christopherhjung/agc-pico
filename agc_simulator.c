@@ -52,6 +52,7 @@
 #include "agc_simulator.h"
 
 #include <assert.h>
+#include <sys/errno.h>
 
 /** Declare the singleton Simulator object instance */
 static Simulator_t Simulator;
@@ -311,10 +312,30 @@ void SimExecute(void)
 		    }
 		  }
 
-		  if (Simulator.CycleCount % 10000000 == 0)
+		  char c = getchar();
+		  if (c != EOF && errno != EAGAIN)
 		  {
-        if (idx < sizeof(keys)/sizeof(keys[0]))
-		      dsky_keyboard_press(keys[idx++]);
+		    if (c == '0'){
+		      dsky_keyboard_press(KEY_ZERO);
+		    }if ('1' <= c && c <= '9'){
+		      dsky_keyboard_press(c - '1' + KEY_ONE);
+		    }else if ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z')
+		    {
+		      c &= ~0x20;
+		      switch (c)
+		      {
+		      case 'V':
+		        dsky_keyboard_press(KEY_VERB);
+		        break;
+		      case 'N':
+		        dsky_keyboard_press(KEY_NOUN);
+		        break;
+		      case 'E':
+		        dsky_keyboard_press(KEY_ENTER);
+		        break;
+		      }
+		    }
+
 		  }
 
 		  /* Adjust the CycleCount */

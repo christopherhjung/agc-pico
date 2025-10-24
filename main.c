@@ -47,12 +47,23 @@
 #include "agc_cli.h"
 #include "agc_simulator.h"
 
+#include <unistd.h>
+#include <termios.h>
+#include <fcntl.h>
+
 /**
 The AGC main function from here the Command Line is parsed, the
 Simulator is initialized and subsequently executed.
 */
 int main (int argc, char *argv[])
 {
+  int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+
+  static struct termios oldt;
+  tcgetattr(STDIN_FILENO, &oldt);   // save old settings
+  oldt.c_lflag &= ~(ICANON | ECHO); // disable canonical mode & echo
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 
 	/* Declare Options and parse the command line */
 	Options_t *Options = CliParseArguments(argc, argv);
