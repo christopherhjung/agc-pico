@@ -47,12 +47,6 @@
 #include "agc_engine.h"
 #include "ringbuffer.h"
 
-typedef struct
-{
-  uint16_t channel;
-  uint16_t value;
-} Packet;
-
 static int CurrentChannelValues[256] = { 0 };
 static int ChannelMasks[256] = { 077777 };
 
@@ -99,7 +93,7 @@ agc_channel_output (agc_t* State, int channel, int value)
       State->Erasable[0][044] = LastRhcRoll;
     }
 
-  Packet packet = {
+  packet_t packet = {
     .channel = channel,
     .value = value
   };
@@ -118,7 +112,7 @@ agc_channel_input (agc_t* State)
   if (!ChannelIsSetUp)
     ChannelSetup (State);
 
-  Packet packet;
+  packet_t packet;
   while (ringbuffer_get(&ringbuffer_in, (unsigned char*)&packet))
     {
       // This body of the while loop follows the work done in SocketAPI.c.
@@ -184,27 +178,6 @@ agc_channel_input (agc_t* State)
     } // while
 
   return 0;
-}
-
-int dsky_channel_input (int* channel, int* value)
-{
-  Packet packet;
-  if (!ringbuffer_get(&ringbuffer_out, (unsigned char*)&packet))
-    return 0;
-
-  *channel = packet.channel;
-  *value = packet.value;
-  return 1;
-}
-
-int dsky_channel_output (int channel, int value)
-{
-  Packet packet = {
-    .channel = channel,
-    .value = value
-  };
-
-  return ringbuffer_put (&ringbuffer_in, (unsigned char*)&packet);
 }
 
 

@@ -1,3 +1,4 @@
+#pragma once
 /*
   ringbuffer - Implements a simple FIFO ringbuffer.
   Copyright 2020 Michael Karl Franzl <public.michael@franzl.name>
@@ -22,6 +23,8 @@
   Mods:      2020-06-07 MKF  Created.
 */
 
+#include <stdint.h>
+
 #define RINGBUFFER_ELEMENT_SIZE 4
 #define RINGBUFFER_ELEMENTS 1024
 #define RINGBUFFER_CAPACITY RINGBUFFER_ELEMENTS * RINGBUFFER_ELEMENT_SIZE
@@ -31,6 +34,12 @@ typedef struct {
   int tail;
   int head;
 } ringbuffer;
+
+typedef struct
+{
+  uint16_t channel;
+  uint16_t value;
+} packet_t;
 
 extern ringbuffer ringbuffer_in;
 extern ringbuffer ringbuffer_out;
