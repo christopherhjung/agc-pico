@@ -66,7 +66,8 @@ typedef struct
 } dsky_t;
 
 
-void dsky_io (dsky_t *dsky);
+void dsky_input_handle (dsky_t *dsky);
+void dsky_output_handle ();
 
 void dsky_keyboard_press (Keyboard Keycode);
 

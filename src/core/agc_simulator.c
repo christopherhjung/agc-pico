@@ -280,7 +280,8 @@ void SimExecute(void)
 			/* Execute a cycle of the AGC engine */
 			SimExecuteEngine();
 
-		  dsky_io(&dsky);
+		  dsky_input_handle(&dsky);
+		  dsky_output_handle();
 
 		  /* Adjust the CycleCount */
 		  SimSetCycleCount(SIM_CYCLECOUNT_INC);

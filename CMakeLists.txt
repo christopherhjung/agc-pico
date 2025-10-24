@@ -4,6 +4,7 @@ project(VAGC)
 
 set(VAGC_src
   src/cli/main.c
+  src/cli/dsky_output_handler.c
   src/cli/agc_cli.c
   src/core/agc_simulator.c
   src/core/agc_engine_init.c
