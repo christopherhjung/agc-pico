@@ -222,11 +222,7 @@ Done:
 
 int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_dump, int all_or_erasable)
 {
-#if defined(WIN32) || defined(__APPLE__)
   uint64_t lli;
-#else
-  unsigned long long lli;
-#endif
   int   ret = 0, i, j, Bank;
   FILE* cd  = NULL;
 

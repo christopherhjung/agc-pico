@@ -439,15 +439,8 @@
 //#include <errno.h>
 //#include <stdlib.h>
 #include <stdio.h>
-#ifdef WIN32
-typedef unsigned short uint16_t;
-typedef int            int32_t;
-#endif
 #include "agc.h"
 #include "core/agc_engine.h"
-#if 0
-#include "agc_symtab.h"
-#endif
 
 // If COARSE_SMOOTH is 1, then the timing of coarse-alignment (in terms of
 // bursting and separation of bursts) is according to the Delco manual.
