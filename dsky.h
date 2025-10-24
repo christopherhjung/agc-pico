@@ -21,7 +21,7 @@ typedef enum
   KEY_ENTER = 28,
 } Keyboard;
 
-void OutputKeycode (Keyboard Keycode);
+void dsky_keyboard_press (Keyboard Keycode);
 
 typedef struct
 {
@@ -50,16 +50,16 @@ typedef struct
   unsigned int comp_acty:1;
 } dsky_t;
 
-void init_dsky_row(dsky_row_t* row);
+void dsky_row_init(dsky_row_t* row);
 
-void init_dsky_two(dsky_two_t* two);
+void dsky_two_init(dsky_two_t* two);
 
-void init_dsky(dsky_t* dsky);
+void dsky_init(dsky_t* dsky);
 
-int update_dsky(dsky_t *dsky, uint16_t value);
+int dsky_update_digit(dsky_t *dsky, uint16_t value);
 
-void print_dsky_row(dsky_row_t *row);
+void dsky_row_print(dsky_row_t *row);
 
-void print_dsky_two(dsky_two_t *two);
+void dsky_two_print(dsky_two_t *two);
 
-void print_dsky(dsky_t *dsky);
+void dsky_print(dsky_t *dsky);

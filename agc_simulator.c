@@ -282,7 +282,7 @@ for how to improve it in a reasonably portable way.*/
 void SimExecute(void)
 {
   dsky_t dsky = {0};
-  init_dsky(&dsky);
+  dsky_init(&dsky);
 	while(1)
 	{
 		/* Manage the Simulated Time */
@@ -299,22 +299,22 @@ void SimExecute(void)
 		  {
 		    if (channel == 010)
 		    {
-		      if (update_dsky(&dsky, value))
-		        print_dsky(&dsky);
+		      if (dsky_update_digit(&dsky, value))
+		        dsky_print(&dsky);
 		    }else if (channel == 011){
 		      dsky.comp_acty = (value & 2) != 0;
 		    }else if (channel == 0163){
 		      int is_off = (value & 040);
 		      dsky.noun.on = is_off == 0;
 		      dsky.verb.on = is_off == 0;
-		      print_dsky(&dsky);
+		      dsky_print(&dsky);
 		    }
 		  }
 
 		  if (Simulator.CycleCount % 10000000 == 0)
 		  {
         if (idx < sizeof(keys)/sizeof(keys[0]))
-		      OutputKeycode(keys[idx++]);
+		      dsky_keyboard_press(keys[idx++]);
 		  }
 
 		  /* Adjust the CycleCount */
