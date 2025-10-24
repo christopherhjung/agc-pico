@@ -2173,6 +2173,7 @@ int agc_engine(agc_state_t* state)
     // the 3200 pulse-per-second fictitious register 0177 I use to support
     // driving the gyro.
 
+  int i;
 #ifdef GYRO_TIMING_SIMULATED
   // Update the 3200 pps gyro pulse counter.
   GyroTimer += GYRO_DIVIDER;
@@ -2195,7 +2196,7 @@ int agc_engine(agc_state_t* state)
   i = (state->input_channel[014] & 01740); // Pick off the gyro bits.
   if(i != OldChannel14 || GyroCount >= 800)
   {
-    j            = ((OldChannel14 & 0740) << 6) | GyroCount;
+    int j            = ((OldChannel14 & 0740) << 6) | GyroCount;
     OldChannel14 = i;
     GyroCount    = 0;
     agc_channel_output(state, 0177, j);
@@ -2258,7 +2259,7 @@ int agc_engine(agc_state_t* state)
   else
   ImuCduCount++;
 #else  // 0
-  int i = (state->input_channel[014] & 070000); // Check IMU CDU drive bits.
+  i = (state->input_channel[014] & 070000); // Check IMU CDU drive bits.
   if(ImuChannel14 == 0 && i != 0) // If suddenly active, start drive.
     ImuCduCount = state->cycle_counter - IMUCDU_BURST_CYCLES;
   if(i != 0 && (state->cycle_counter - ImuCduCount) >= IMUCDU_BURST_CYCLES) // Time for next burst.
