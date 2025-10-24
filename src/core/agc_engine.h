@@ -340,7 +340,7 @@ typedef struct
   int      channel_routine_count; // Counter to keep track of channel interface routine timing
   unsigned dsky_timer; // Timer for DSKY-related timing
   unsigned dsky_flash; // DSKY flash counter (0 = flash occurring)
-  unsigned dsky_channel_163; // Copy of the fake DSKY channel 163
+  uint16_t dsky_channel_163; // Copy of the fake DSKY channel 163
 } agc_state_t;
 
 extern int DebugDsky;

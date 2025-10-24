@@ -1497,125 +1497,125 @@ void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
 // Function handles the coarse-alignment output pulses for one IMU CDU drive axis.
 // It returns non-0 if a non-zero count remains on the axis, 0 otherwise.
 
-static int BurstOutput(agc_state_t* State, int DriveBitMask, int CounterRegister, int Channel)
+static int burst_output(agc_state_t* state, int drive_bit_mask, int counter_register, int channel)
 {
-  static int CountCDUX = 0, CountCDUY = 0, CountCDUZ = 0; // In target CPU format.
-  int DriveCount = 0, DriveBit, Direction = 0, Delta, DriveCountSaved;
-  if(CounterRegister == RegCDUXCMD)
-    DriveCountSaved = CountCDUX;
-  else if(CounterRegister == RegCDUYCMD)
-    DriveCountSaved = CountCDUY;
-  else if(CounterRegister == RegCDUZCMD)
-    DriveCountSaved = CountCDUZ;
+  static int count_cdu_x = 0, count_cdu_y = 0, count_cdu_z = 0; // In target CPU format.
+  int drive_count = 0, drive_count_saved;
+  if(counter_register == RegCDUXCMD)
+    drive_count_saved = count_cdu_x;
+  else if(counter_register == RegCDUYCMD)
+    drive_count_saved = count_cdu_y;
+  else if(counter_register == RegCDUZCMD)
+    drive_count_saved = count_cdu_z;
   else
     return (0);
   // Driving this axis?
-  DriveBit = (State->input_channel[014] & DriveBitMask);
+  int drive_bit = (state->input_channel[014] & drive_bit_mask);
   // If so, we must retrieve the count from the counter register.
-  if(DriveBit)
+  if(drive_bit)
   {
-    DriveCount = State->erasable[0][CounterRegister];
-    State->erasable[0][CounterRegister] = 0;
+    drive_count = state->erasable[0][counter_register];
+    state->erasable[0][counter_register] = 0;
   }
   // The count may be negative.  If so, normalize to be positive and set the
   // direction flag.
-  Direction = (040000 & DriveCount);
-  if(Direction)
+  int dir = (040000 & drive_count);
+  if(dir)
   {
-    DriveCount ^= 077777;
-    DriveCountSaved -= DriveCount;
+    drive_count ^= 077777;
+    drive_count_saved -= drive_count;
   }
   else
-    DriveCountSaved += DriveCount;
-  if(DriveCountSaved < 0)
+    drive_count_saved += drive_count;
+  if(drive_count_saved < 0)
   {
-    DriveCountSaved = -DriveCountSaved;
-    Direction       = 040000;
+    drive_count_saved = -drive_count_saved;
+    dir       = 040000;
   }
   else
-    Direction = 0;
+    dir = 0;
   // Determine how many pulses to output.  The max is 192 per burst.
-  Delta = DriveCountSaved;
-  if(Delta >= 192 / COARSE_SMOOTH)
-    Delta = 192 / COARSE_SMOOTH;
+  int delta = drive_count_saved;
+  if(delta >= 192 / COARSE_SMOOTH)
+    delta = 192 / COARSE_SMOOTH;
   // If the count is non-zero, pulse it.
-  if(Delta > 0)
+  if(delta > 0)
   {
-    agc_channel_output(State, Channel, Direction | Delta);
-    DriveCountSaved -= Delta;
+    agc_channel_output(state, channel, dir | delta);
+    drive_count_saved -= delta;
   }
-  if(Direction)
-    DriveCountSaved = -DriveCountSaved;
-  if(CounterRegister == RegCDUXCMD)
-    CountCDUX = DriveCountSaved;
-  else if(CounterRegister == RegCDUYCMD)
-    CountCDUY = DriveCountSaved;
-  else if(CounterRegister == RegCDUZCMD)
-    CountCDUZ = DriveCountSaved;
-  return (DriveCountSaved);
+  if(dir)
+    drive_count_saved = -drive_count_saved;
+  if(counter_register == RegCDUXCMD)
+    count_cdu_x = drive_count_saved;
+  else if(counter_register == RegCDUYCMD)
+    count_cdu_y = drive_count_saved;
+  else if(counter_register == RegCDUZCMD)
+    count_cdu_z = drive_count_saved;
+  return (drive_count_saved);
 }
 
-static void update_dsky(agc_state_t* State)
+static void update_dsky(agc_state_t* state)
 {
-  unsigned LastChannel163 = State->dsky_channel_163;
+  unsigned last_channel_163 = state->dsky_channel_163;
 
-  State->dsky_channel_163 &=
+  state->dsky_channel_163 &=
     ~(DSKY_KEY_REL | DSKY_VN_FLASH | DSKY_OPER_ERR | DSKY_RESTART
       | DSKY_STBY | DSKY_AGC_WARN | DSKY_TEMP);
 
-  if(State->input_channel[013] & 01000)
+  if(state->input_channel[013] & 01000)
     // The light test is active. Light RESTART and STBY.
-    State->dsky_channel_163 |= DSKY_RESTART | DSKY_STBY; //
+    state->dsky_channel_163 |= DSKY_RESTART | DSKY_STBY; //
 
   // If we're in standby, light the standby light
-  if(State->standby)
-    State->dsky_channel_163 |= DSKY_STBY;
+  if(state->standby)
+    state->dsky_channel_163 |= DSKY_STBY;
 
   // Make the RESTART light mirror State->RestartLight.
-  if(State->restart_light)
-    State->dsky_channel_163 |= DSKY_RESTART;
+  if(state->restart_light)
+    state->dsky_channel_163 |= DSKY_RESTART;
 
   // Light TEMP if channel 11 bit 4 is set, or channel 30 bit 15 is set
-  if((State->input_channel[011] & 010) || (State->input_channel[030] & 040000))
-    State->dsky_channel_163 |= DSKY_TEMP;
+  if((state->input_channel[011] & 010) || (state->input_channel[030] & 040000))
+    state->dsky_channel_163 |= DSKY_TEMP;
 
   // Set KEY REL and OPER ERR according to channel 11
-  if(State->input_channel[011] & DSKY_KEY_REL)
-    State->dsky_channel_163 |= DSKY_KEY_REL;
-  if(State->input_channel[011] & DSKY_OPER_ERR)
-    State->dsky_channel_163 |= DSKY_OPER_ERR;
+  if(state->input_channel[011] & DSKY_KEY_REL)
+    state->dsky_channel_163 |= DSKY_KEY_REL;
+  if(state->input_channel[011] & DSKY_OPER_ERR)
+    state->dsky_channel_163 |= DSKY_OPER_ERR;
 
   // Turn on the AGC warning light if the warning filter is above its threshold
-  if(State->warning_filter > WARNING_FILTER_THRESHOLD)
+  if(state->warning_filter > WARNING_FILTER_THRESHOLD)
   {
-    State->dsky_channel_163 |= DSKY_AGC_WARN;
+    state->dsky_channel_163 |= DSKY_AGC_WARN;
 
     // Set the AGC Warning input bit in channel 33
-    State->input_channel[033] &= 057777;
+    state->input_channel[033] &= 057777;
   }
 
   // Update the DSKY flash counter based on the DSKY timer
-  while(State->dsky_timer >= DSKY_OVERFLOW)
+  while(state->dsky_timer >= DSKY_OVERFLOW)
   {
-    State->dsky_timer -= DSKY_OVERFLOW;
-    State->dsky_flash = (State->dsky_flash + 1) % DSKY_FLASH_PERIOD;
+    state->dsky_timer -= DSKY_OVERFLOW;
+    state->dsky_flash = (state->dsky_flash + 1) % DSKY_FLASH_PERIOD;
   }
 
   // Flashing lights on the DSKY have a period of 1.28s, and a 75% duty cycle
-  if(!State->standby && State->dsky_flash == 0)
+  if(!state->standby && state->dsky_flash == 0)
   {
     // If V/N FLASH is high, then the lights are turned off
-    if(State->input_channel[011] & DSKY_VN_FLASH)
-      State->dsky_channel_163 |= DSKY_VN_FLASH;
+    if(state->input_channel[011] & DSKY_VN_FLASH)
+      state->dsky_channel_163 |= DSKY_VN_FLASH;
 
     // Flash off the KEY REL and OPER ERR lamps
-    State->dsky_channel_163 &= ~DSKY_KEY_REL;
-    State->dsky_channel_163 &= ~DSKY_OPER_ERR;
+    state->dsky_channel_163 &= ~DSKY_KEY_REL;
+    state->dsky_channel_163 &= ~DSKY_OPER_ERR;
   }
 
   // Send out updated display information, if something on the DSKY changed
-  if(State->dsky_channel_163 != LastChannel163)
-    agc_channel_output(State, 0163, State->dsky_channel_163);
+  if(state->dsky_channel_163 != last_channel_163)
+    agc_channel_output(state, 0163, state->dsky_channel_163);
 }
 
 //----------------------------------------------------------------------------
@@ -2251,9 +2251,9 @@ int agc_engine(agc_state_t* state)
       // Adjust the cycle counter.
       ImuCduCount -= IMUCDU_BURST_CYCLES;
       // Determine how many pulses are wanted on each axis this burst.
-      ImuChannel14 = BurstOutput (state, 040000, RegCDUXCMD, 0174);
-      ImuChannel14 |= BurstOutput (state, 020000, RegCDUYCMD, 0175);
-      ImuChannel14 |= BurstOutput (state, 010000, RegCDUZCMD, 0176);
+      ImuChannel14 = burst_output (state, 040000, RegCDUXCMD, 0174);
+      ImuChannel14 |= burst_output (state, 020000, RegCDUYCMD, 0175);
+      ImuChannel14 |= burst_output (state, 010000, RegCDUZCMD, 0176);
     }
   else
   ImuCduCount++;
@@ -2266,9 +2266,9 @@ int agc_engine(agc_state_t* state)
     // Adjust the cycle counter.
     ImuCduCount += IMUCDU_BURST_CYCLES;
     // Determine how many pulses are wanted on each axis this burst.
-    ImuChannel14 = BurstOutput(state, 040000, RegCDUXCMD, 0174);
-    ImuChannel14 |= BurstOutput(state, 020000, RegCDUYCMD, 0175);
-    ImuChannel14 |= BurstOutput(state, 010000, RegCDUZCMD, 0176);
+    ImuChannel14 = burst_output(state, 040000, RegCDUXCMD, 0174);
+    ImuChannel14 |= burst_output(state, 020000, RegCDUYCMD, 0175);
+    ImuChannel14 |= burst_output(state, 010000, RegCDUZCMD, 0176);
   }
 #endif // 0
 
