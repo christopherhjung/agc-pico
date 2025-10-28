@@ -47,22 +47,18 @@
 #include "core/agc.h"
 #include "ringbuffer.h"
 
-int LastRhcPitch, LastRhcYaw, LastRhcRoll;
+int16_t last_rhc_pitch = 0;
+int16_t last_rhc_yaw = 0;
+int16_t last_rhc_roll = 0;
 
-static int CurrentChannelValues[256] = {0};
-static int ChannelMasks[256]         = {077777};
+static int channel_is_set_up = 0;
 
-static int ChannelIsSetUp = 0;
-
-static void ChannelSetup(agc_state_t* State)
+static void channel_setup(agc_state_t* state)
 {
-  ChannelIsSetUp = 1;
+  channel_is_set_up = 1;
 
   ringbuffer_init(&ringbuffer_out);
   ringbuffer_init(&ringbuffer_in);
-
-  for(int i = 0; i < 256; i++)
-    ChannelMasks[i] = 077777;
 }
 
 /* The simulated AGC CPU calls this function when it wants to output data.  It
@@ -74,8 +70,8 @@ static void ChannelSetup(agc_state_t* State)
  */
 void agc_channel_output(agc_state_t* state, int channel, int value)
 {
-  if(!ChannelIsSetUp)
-    ChannelSetup(state);
+  if(!channel_is_set_up)
+    channel_setup(state);
 
   // Some output channels have purposes within the CPU, so we have to
   // account for those separately.
@@ -88,13 +84,12 @@ void agc_channel_output(agc_state_t* state, int channel, int value)
   // Stick data into the RHCCTR registers, if bits 8,9 of channel 013 are set.
   if(channel == 013 && 0600 == (0600 & value) && !CmOrLm)
   {
-    c(042) = LastRhcPitch;
-    c(043) = LastRhcYaw;
-    c(044) = LastRhcRoll;
+    c(042) = last_rhc_pitch;
+    c(043) = last_rhc_yaw;
+    c(044) = last_rhc_roll;
   }
 
   packet_t packet = {.channel = channel, .value = value};
-
   ringbuffer_put(&ringbuffer_out, (unsigned char*)&packet);
 }
 
@@ -104,8 +99,8 @@ void agc_channel_output(agc_state_t* state, int channel, int value)
  */
 int agc_channel_input(agc_state_t* state)
 {
-  if(!ChannelIsSetUp)
-    ChannelSetup(state);
+  if(!channel_is_set_up)
+    channel_setup(state);
 
   packet_t packet;
   while(ringbuffer_get(&ringbuffer_in, (unsigned char*)&packet))
@@ -114,17 +109,7 @@ int agc_channel_input(agc_state_t* state)
     // I removed socket client related code, and refactored and reformatted
     // the code.
 
-    int uBit = 0;
     packet.value &= 077777; // Convert to AGC format (only keep upper 15 bits).
-
-    if(uBit)
-    {
-      // This is not an actual input to the CPU. It only sets a bit mask
-      // for masking of future inputs.
-      ChannelMasks[packet.channel] = packet.value;
-      continue; // Proceed with the next packet in the ring buffer.
-    }
-
     if(packet.channel & 0x80)
     {
       // This is a counter increment. According to NullAPI.c we need to
@@ -134,9 +119,8 @@ int agc_channel_input(agc_state_t* state)
     }
 
     // Mask out irrelevant bits, set current bits, and write to CPU.
-    packet.value &= ChannelMasks[packet.channel];
     packet.value |=
-      read_io(state, packet.channel) & ~ChannelMasks[packet.channel];
+      read_io(state, packet.channel) & ~077777;
     write_io(state, packet.channel, packet.value);
 
     // If this is a keystroke from the DSKY, generate an interrupt req.
@@ -159,17 +143,17 @@ int agc_channel_input(agc_state_t* state)
     // enabled and the data requested (bits 8,9 of channel 13).
     else if(packet.channel == 0166)
     {
-      LastRhcPitch = packet.value;
+      last_rhc_pitch = packet.value;
       agc_channel_output(state, packet.channel, packet.value); // echo
     }
     else if(packet.channel == 0167)
     {
-      LastRhcYaw = packet.value;
+      last_rhc_yaw = packet.value;
       agc_channel_output(state, packet.channel, packet.value); // echo
     }
     else if(packet.channel == 0170)
     {
-      LastRhcRoll = packet.value;
+      last_rhc_roll = packet.value;
       agc_channel_output(state, packet.channel, packet.value); // echo
     }
   } // while
