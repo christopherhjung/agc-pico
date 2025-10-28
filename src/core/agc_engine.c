@@ -533,93 +533,93 @@ int NumDebugRules = 0;
 // directly is that the L and Q registers appear in both memory and i/o space,
 // at the same addresses.
 
-int read_io(agc_state_t* state, int Address)
+int read_io(agc_state_t* state, int addr)
 {
-  if(Address < 0 || Address > 0777)
-    return (0);
-  if(Address == RegL || Address == RegQ)
-    return (c(Address));
-  return (state->input_channel[Address]);
+  if(addr < 0 || addr > 0777)
+    return 0;
+  if(addr == RegL || addr == RegQ)
+    return c(addr);
+  return state->input_channel[addr];
 }
 
-void write_io(agc_state_t* state, int Address, int Value)
+void write_io(agc_state_t* state, int addr, int val)
 {
   // The value should be in AGC format.
-  Value &= 077777;
-  if(Address < 0 || Address > 0777)
+  val &= 077777;
+  if(addr < 0 || addr > 0777)
     return;
-  if(Address == RegL || Address == RegQ)
-    c(Address) = Value;
+  if(addr == RegL || addr == RegQ)
+    c(addr) = val;
 
-  if(Address == 010)
+  if(addr == 010)
   {
     // Channel 10 is converted externally to the CPU into up to 16 ports,
     // by means of latching relays.  We need to capture this data.
-    state->output_channel_10[(Value >> 11) & 017] = Value;
+    state->output_channel_10[(val >> 11) & 017] = val;
   }
-  else if((Address == 015 || Address == 016) && Value == 022)
+  else if((addr == 015 || addr == 016) && val == 022)
   {
     // RSET being pressed on either DSKY clears the RESTART light
     // flip-flop directly, without software intervention
     state->restart_light = 0;
   }
-  else if(Address == 033)
+  else if(addr == 033)
   {
     // Channel 33 bits 11-15 are controlled internally, so don't let
     // anybody write to them
-    Value = (state->input_channel[Address] & 076000) | (Value & 001777);
+    val = (state->input_channel[addr] & 076000) | (val & 001777);
   }
 
-  state->input_channel[Address] = Value;
+  state->input_channel[addr] = val;
 }
 
-void cpu_write_io(agc_state_t* state, int Address, int Value)
+void cpu_write_io(agc_state_t* state, int addr, int val)
 {
   //static int Downlink = 0;
 
-  if(Address == 013)
+  if(addr == 013)
   {
     // Enable the appropriate traps for HANDRUPT. Note that the trap
     // settings cannot be read back out, so after setting the traps the
     // enable bits are masked out.
-    if(Value & 004000)
+    if(val & 004000)
       state->trap_31a = 1;
-    if(Value & 010000)
+    if(val & 010000)
       state->trap_31b = 1;
-    if(Value & 020000)
+    if(val & 020000)
       state->trap_32 = 1;
 
-    Value &= 043777;
+    val &= 043777;
   }
-  if(Address == 033)
+  if(addr == 033)
   {
     // 2005-07-04 RSB.  The necessity for this was pointed out by Mark
     // Grant via Markus Joachim.  Although channel 033 is an input channel,
     // the CPU writes to it from time to time, to "reset" bits 11-15 to 1.
     // Apparently, these are latched inputs, and this resets the latches.
-    state->input_channel[Address] |= 076000;
+    state->input_channel[addr] |= 076000;
 
     // Don't allow the AGC warning input to be reset if the light
     // is still on
     if(state->warning_filter > WARNING_FILTER_THRESHOLD)
-      state->input_channel[Address] &= 057777;
+      state->input_channel[addr] &= 057777;
 
     // The actual value that was written now doesn't matter, so make sure
     // no changes occur.
-    Value = state->input_channel[Address];
+    val = state->input_channel[addr];
   }
-  else if(Address == 077)
+  else if(addr == 077)
   {
     // Similarly, the CH77 Restart Monitor Alarm Box has latches for
     // alarm codes that are reset when CH77 is written to.
-    Value = 0;
+    val = 0;
 
     // If the Night Watchman was recently tripped, its CH77 bit
     // is forcibly asserted (unlike all the others) for 1.28s
     if(state->night_watchman_tripped)
-      Value |= CH77_NIGHT_WATCHMAN;
+      val |= CH77_NIGHT_WATCHMAN;
   }
-  else if(Address == 011 && (Value & 01000))
+  else if(addr == 011 && (val & 01000))
   {
     // The DSKY RESTART light is reset whenever CH11 bit 10 is written
     // with a 1. The controlling flip-flop in the AGC also has a hard
@@ -628,16 +628,16 @@ void cpu_write_io(agc_state_t* state, int Address, int Value)
     state->restart_light = 0;
   }
 
-  write_io(state, Address, Value);
-  agc_channel_output(state, Address, Value & 077777);
+  write_io(state, addr, val);
+  agc_channel_output(state, addr, val & 077777);
 
   // 2005-06-25 RSB.  DOWNRUPT stuff.  I assume that the 20 ms. between
   // downlink transmissions is due to the time needed for transmitting,
   // so I don't interrupt at a regular rate,  Instead, I make sure that
   // there are 20 ms. between transmissions
-  if(Address == 034)
+  if(addr == 034)
     state->downlink |= 1;
-  else if(Address == 035)
+  else if(addr == 035)
     state->downlink |= 2;
   if(state->downlink == 3)
   {
@@ -677,11 +677,11 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
   // is concerned, that the following rules actually do result in continuous
   // block of memory that don't have problems in crossing bank boundaries.
   if(addr_12 < 00400) // Unswitched-erasable.
-    return (&c(addr_12 & 00377));
+    return &c(addr_12 & 00377);
   else if(addr_12 < 01000) // Unswitched-erasable (continued).
-    return (&state->erasable[1][addr_12 & 00377]);
+    return &state->erasable[1][addr_12 & 00377];
   else if(addr_12 < 01400) // Unswitched-erasable (continued).
-    return (&state->erasable[2][addr_12 & 00377]);
+    return &state->erasable[2][addr_12 & 00377];
   else if(addr_12 < 02000) // Switched-erasable.
   {
     // Recall that the parity bit is accounted for in the shift below.
@@ -708,13 +708,13 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
     uint16_t LinearAddr = adj_fb * 02000 + (addr_12 & 01777);
     int16_t  ExpectedParity =
       (state->parities[LinearAddr / 32] >> (LinearAddr % 32)) & 1;
-    int16_t Word = ((*addr) << 1) | ExpectedParity;
-    Word ^= (Word >> 8);
-    Word ^= (Word >> 4);
-    Word ^= (Word >> 2);
-    Word ^= (Word >> 1);
-    Word &= 1;
-    if(Word != 1)
+    int16_t word = ((*addr) << 1) | ExpectedParity;
+    word ^= (word >> 8);
+    word ^= (word >> 4);
+    word ^= (word >> 2);
+    word ^= (word >> 1);
+    word &= 1;
+    if(word != 1)
     {
       // The program is trying to access unused fixed memory, which
       // will trigger a parity alarm.
@@ -802,69 +802,69 @@ static void assign_from_pointer(agc_state_t* state, int16_t* pointer, int value)
 // Compute the "diminished absolute value".  The input data and output data
 // are both in AGC 1's-complement format.
 
-static int16_t dabs(int16_t Input)
+static int16_t dabs(int16_t input)
 {
-  if(0 != (040000 & Input))
-    Input = 037777 & ~Input; // Input was negative, but now is positive.
-  if(Input > 1)              // "diminish" it if >1.
-    Input--;
+  if(0 != (040000 & input))
+    input = 037777 & ~input; // Input was negative, but now is positive.
+  if(input > 1)              // "diminish" it if >1.
+    input--;
   else
-    Input = AGC_P0;
-  return (Input);
+    input = AGC_P0;
+  return (input);
 }
 
 // Same, but for 16-bit registers.
-static int odabs(int Input)
+static int odabs(int input)
 {
-  if(0 != (0100000 & Input))
-    Input = (0177777 & ~Input); // Input was negative, but now is positive.
-  if(Input > 1)                 // "diminish" it if >1.
-    Input--;
+  if(0 != (0100000 & input))
+    input = (0177777 & ~input); // Input was negative, but now is positive.
+  if(input > 1)                 // "diminish" it if >1.
+    input--;
   else
-    Input = AGC_P0;
-  return (Input);
+    input = AGC_P0;
+  return (input);
 }
 
 //-----------------------------------------------------------------------------
 // Convert an AGC-formatted word to CPU-native format.
 
-static int agc2cpu(int Input)
+static int agc2cpu(int input)
 {
-  if(0 != (040000 & Input))
-    return (-(037777 & ~Input));
+  if(0 != (040000 & input))
+    return (-(037777 & ~input));
   else
-    return (037777 & Input);
+    return (037777 & input);
 }
 
 //-----------------------------------------------------------------------------
 // Convert a native CPU-formatted word to AGC format. If the input value is
 // out of range, it is truncated by discarding high-order bits.
 
-static int cpu2agc(int Input)
+static int cpu2agc(int input)
 {
-  if(Input < 0)
-    return (077777 & ~(-Input));
+  if(input < 0)
+    return (077777 & ~(-input));
   else
-    return (077777 & Input);
+    return (077777 & input);
 }
 
 //-----------------------------------------------------------------------------
 // Double-length versions of the same.
 
-static int agc2cpu2(int Input)
+static int agc2cpu2(int input)
 {
-  if(0 != (02000000000 & Input))
-    return (-(01777777777 & ~Input));
+  if(0 != (02000000000 & input))
+    return (-(01777777777 & ~input));
   else
-    return (01777777777 & Input);
+    return (01777777777 & input);
 }
 
-static int cpu2agc2(int Input)
+static int cpu2agc2(int input)
 {
-  if(Input < 0)
-    return (03777777777 & ~(01777777777 & (-Input)));
+  if(input < 0)
+    return (03777777777 & ~(01777777777 & (-input)));
   else
-    return (01777777777 & Input);
+    return (01777777777 & input);
 }
 
 //----------------------------------------------------------------------------
@@ -918,9 +918,9 @@ PutQ (agc_state_t * State, int Value)
 // contains overflow or not.  To do this for the accumulator itself,
 // use ValueOverflowed(GetAccumulator(State)).
 
-static int16_t value_ovf(int Value)
+static int16_t value_ovf(int value)
 {
-  switch(Value & 0140000)
+  switch(value & 0140000)
   {
     case 0040000:
       return (AGC_P1);
@@ -934,17 +934,17 @@ static int16_t value_ovf(int Value)
 // Return an overflow-corrected value from a 16-bit (plus parity ) SP word.
 // This involves just moving bit 16 down to bit 15.
 
-int16_t overflow_corrected(int Value)
+int16_t overflow_corrected(int value)
 {
-  return ((Value & 037777) | ((Value >> 1) & 040000));
+  return ((value & 037777) | ((value >> 1) & 040000));
 }
 
 // Sign-extend a 15-bit SP value so that it can go into the 16-bit (plus parity)
 // accumulator.
 
-int sign_extend(int16_t Word)
+int sign_extend(int16_t word)
 {
-  return ((Word & 077777) | ((Word << 1) & 0100000));
+  return ((word & 077777) | ((word << 1) & 0100000));
 }
 
 //-----------------------------------------------------------------------------
@@ -958,81 +958,81 @@ int sign_extend(int16_t Word)
 // and making sure all of the signs are okay when one or more words are zero.
 // A sign-extension is added a la the normal accumulator.
 
-static int sp_to_decent(int16_t* LsbSP)
+static int sp_to_decent(int16_t* lsb_sp)
 {
-  int16_t Msb, Lsb;
-  int     Value, Complement;
-  Msb = LsbSP[-1];
-  Lsb = *LsbSP;
-  if(Msb == AGC_P0 || Msb == AGC_M0) // Msb is zero.
+  int16_t msb, lsb;
+  int     val, complement;
+  msb = lsb_sp[-1];
+  lsb = *lsb_sp;
+  if(msb == AGC_P0 || msb == AGC_M0) // Msb is zero.
   {
     // As far as the case of the sign of +0-0 or -0+0 is concerned,
     // we follow the convention of the DV instruction, in which the
     // overall sign is the sign of the less-significant word.
-    Value = sign_extend(Lsb);
-    if(Value & 0100000)
-      Value |= ~0177777;
-    return (07777777777 & Value); // Eliminate extra sign-ext. bits.
+    val = sign_extend(lsb);
+    if(val & 0100000)
+      val |= ~0177777;
+    return (07777777777 & val); // Eliminate extra sign-ext. bits.
   }
   // If signs of Msb and Lsb words don't match, then make them match.
-  if((040000 & Lsb) != (040000 & Msb))
+  if((040000 & lsb) != (040000 & msb))
   {
-    if(Lsb == AGC_P0 || Lsb == AGC_M0) // Lsb is zero.
+    if(lsb == AGC_P0 || lsb == AGC_M0) // Lsb is zero.
     {
       // Adjust sign of Lsb to match Msb.
-      if(0 == (040000 & Msb))
-        Lsb = AGC_P0;
+      if(0 == (040000 & msb))
+        lsb = AGC_P0;
       else
-        Lsb = AGC_M0; // 2005-08-17 RSB.  Was "Msb".  Oops!
+        lsb = AGC_M0; // 2005-08-17 RSB.  Was "Msb".  Oops!
     }
     else // Lsb is not zero.
     {
       // The logic will be easier if the Msb is positive.
-      Complement = (040000 & Msb);
-      if(Complement)
+      complement = (040000 & msb);
+      if(complement)
       {
-        Msb = (077777 & ~Msb);
-        Lsb = (077777 & ~Lsb);
+        msb = (077777 & ~msb);
+        lsb = (077777 & ~lsb);
       }
       // We now have Msb positive non-zero and Lsb negative non-zero.
       // Subtracting 1 from Msb is equivalent to adding 2**14 (i.e.,
       // 0100000, accounting for the parity) to Lsb.  An additional 1
       // must be added to account for the negative overflow.
-      Msb--;
-      Lsb = ((Lsb + 040000 + AGC_P1) & 077777);
+      msb--;
+      lsb = ((lsb + 040000 + AGC_P1) & 077777);
       // Restore the signs, if necessary.
-      if(Complement)
+      if(complement)
       {
-        Msb = (077777 & ~Msb);
-        Lsb = (077777 & ~Lsb);
+        msb = (077777 & ~msb);
+        lsb = (077777 & ~lsb);
       }
     }
   }
   // We now have an Msb and Lsb of the same sign; therefore,
   // we can simply juxtapose them, discarding the sign bit from the
   // Lsb.  (And recall that the 0-position is still the parity.)
-  Value = (03777740000 & (Msb << 14)) | (037777 & Lsb);
+  val = (03777740000 & (msb << 14)) | (037777 & lsb);
   // Also, sign-extend for further arithmetic.
-  if(02000000000 & Value)
-    Value |= 04000000000;
-  return (Value);
+  if(02000000000 & val)
+    val |= 04000000000;
+  return (val);
 }
 
-static void decent_to_sp(int Decent, int16_t* LsbSP)
+static void decent_to_sp(int Decent, int16_t* lsb_sp)
 {
   int Sign;
   Sign   = (Decent & 04000000000);
-  *LsbSP = (037777 & Decent);
+  *lsb_sp = (037777 & Decent);
   if(Sign)
-    *LsbSP |= 040000;
-  LsbSP[-1] = overflow_corrected(0177777 & (Decent >> 14)); // Was 13.
+    *lsb_sp |= 040000;
+  lsb_sp[-1] = overflow_corrected(0177777 & (Decent >> 14)); // Was 13.
 }
 
 // Adds two sign-extended SP values.  The result may contain overflow.
-int add_sp_16(int Addend1, int Addend2)
+int add_sp_16(int addend1, int addend2)
 {
   int Sum;
-  Sum = Addend1 + Addend2;
+  Sum = addend1 + addend2;
   if(Sum & 0200000)
   {
     Sum += AGC_P1;
@@ -1043,11 +1043,11 @@ int add_sp_16(int Addend1, int Addend2)
 
 // Absolute value of an SP value.
 
-static int16_t abs_sp(int16_t Value)
+static int16_t abs_sp(int16_t value)
 {
-  if(040000 & Value)
-    return (077777 & ~Value);
-  return (Value);
+  if(040000 & value)
+    return (077777 & ~value);
+  return (value);
 }
 
 // Check if an SP value is negative.
@@ -1060,9 +1060,9 @@ static int16_t abs_sp(int16_t Value)
 
 // Negate an SP value.
 
-static int16_t neg_sp(int16_t Value)
+static int16_t neg_sp(int16_t value)
 {
-  return (077777 & ~Value);
+  return (077777 & ~value);
 }
 
 //-----------------------------------------------------------------------------
@@ -1071,7 +1071,7 @@ static int16_t neg_sp(int16_t Value)
 // and return 1 on overflow.
 
 #include <stdio.h>
-static int TrapPIPA = 0;
+static int trap_pipa = 0;
 
 // 1's-complement increment
 int counter_pinc(int16_t* counter)
@@ -1087,14 +1087,14 @@ int counter_pinc(int16_t* counter)
   else
   {
     Overflow = 0;
-    if(TrapPIPA)
+    if(trap_pipa)
       printf("PINC: %o", i);
     i = ((i + 1) & 077777);
-    if(TrapPIPA)
+    if(trap_pipa)
       printf(" %o", i);
     if(i == AGC_P0) // Account for -0 to +1 transition.
       i++;
-    if(TrapPIPA)
+    if(trap_pipa)
       printf(" %o\n", i);
   }
   *counter = i;
@@ -1115,14 +1115,14 @@ int counter_minc(int16_t* counter)
   else
   {
     ovf = 0;
-    if(TrapPIPA)
+    if(trap_pipa)
       printf("MINC: %o", i);
     i = ((i - 1) & 077777);
-    if(TrapPIPA)
+    if(trap_pipa)
       printf(" %o", i);
     if(i == AGC_M0) // Account for +0 to -1 transition.
       i--;
-    if(TrapPIPA)
+    if(trap_pipa)
       printf(" %o\n", i);
   }
   *counter = i;
@@ -1489,7 +1489,7 @@ void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
     // On some counters, overflow is supposed to cause
     // an interrupt.  Take care of setting the interrupt request here.
   }
-  TrapPIPA = 0;
+  trap_pipa = 0;
 }
 
 //----------------------------------------------------------------------------

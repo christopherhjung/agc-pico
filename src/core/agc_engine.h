@@ -358,12 +358,12 @@ int CmOrLm;
 int     agc_engine(agc_state_t* state);
 int     agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_dump, int all_or_erasable);
 int     agc_load_binfile(agc_state_t* Stage, const char* RomImage);
-int     read_io(agc_state_t* state, int Address);
-void    write_io(agc_state_t* state, int Address, int Value);
-void    cpu_write_io(agc_state_t* state, int Address, int Value);
-int16_t overflow_corrected(int Value);
-int     sign_extend(int16_t Word);
-int     add_sp_16(int Addend1, int Addend2);
+int     read_io(agc_state_t* state, int addr);
+void    write_io(agc_state_t* state, int addr, int val);
+void    cpu_write_io(agc_state_t* state, int addr, int val);
+int16_t overflow_corrected(int value);
+int     sign_extend(int16_t word);
+int     add_sp_16(int addend1, int addend2);
 void unprogrammed_increment(agc_state_t* state, int counter, int inc_type);
 
 // API for yaAGC-to-peripheral communications.
