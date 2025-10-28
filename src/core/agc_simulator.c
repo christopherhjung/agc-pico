@@ -259,6 +259,8 @@ void sim_exec(void)
 {
   dsky_t dsky;
   dsky_init(&dsky);
+
+  agc_engine_init (&Simulator.state, "state/Core.bin", NULL, 0);
   while(1)
   {
     /* Manage the Simulated Time */
