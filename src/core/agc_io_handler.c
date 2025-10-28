@@ -77,16 +77,16 @@ void agc_channel_output(agc_state_t* state, int channel, int value)
   // account for those separately.
   if(channel == 7)
   {
-    state->input_channel[7] = state->output_channel_7 = (value & 0160);
+    input(7) = state->output_channel_7 = (value & 0160);
     return;
   }
 
   // Stick data into the RHCCTR registers, if bits 8,9 of channel 013 are set.
   if(channel == 013 && 0600 == (0600 & value) && !CmOrLm)
   {
-    c(042) = last_rhc_pitch;
-    c(043) = last_rhc_yaw;
-    c(044) = last_rhc_roll;
+    mem0(042) = last_rhc_pitch;
+    mem0(043) = last_rhc_yaw;
+    mem0(044) = last_rhc_roll;
   }
 
   packet_t packet = {.channel = channel, .value = value};
@@ -132,7 +132,7 @@ int agc_channel_input(agc_state_t* state)
     // UPRUPT interrupt request should be set.
     else if(packet.channel == 0173)
     {
-      c(RegINLINK)                 = (packet.value & 077777);
+      mem0(RegINLINK)                 = (packet.value & 077777);
       state->interrupt_requests[7] = 1;
     }
     // Fictitious registers for rotational hand controller (RHC).

@@ -273,7 +273,8 @@
 #define DL_CM_ENTRY_UPDATE 9
 #define DL_LM_AGS_INITIALIZATION_UPDATE 10
 
-#define c(Reg) state->erasable[0][Reg]
+#define mem0(reg) state->erasable[0][reg]
+#define input(reg) state->input_channel[reg]
 
 //--------------------------------------------------------------------------
 // Each instance of the AGC CPU simulation has a data structure of type agc_t

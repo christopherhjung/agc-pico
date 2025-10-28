@@ -235,17 +235,17 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
 
   // Clear i/o channels.
   for(i = 0; i < NUM_CHANNELS; i++)
-    state->input_channel[i] = 0;
-  state->input_channel[030] = 037777;
-  state->input_channel[031] = 077777;
-  state->input_channel[032] = 077777;
-  state->input_channel[033] = 077777;
+    input(i) = 0;
+  input(030) = 037777;
+  input(031) = 077777;
+  input(032) = 077777;
+  input(033) = 077777;
 
   // Clear erasable memory.
   for(Bank = 0; Bank < 8; Bank++)
     for(j = 0; j < 0400; j++)
       state->erasable[Bank][j] = 0;
-  c(RegZ) = 04000; // Initial program counter.
+  mem0(RegZ) = 04000; // Initial program counter.
 
   // Set up the CPU state variables that aren't part of normal memory.
   state->cycle_counter   = 0;
@@ -305,10 +305,10 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
 
   if(initializeSunburst37)
   {
-    c(0067) = 077777;
-    c(0157) = 077777;
-    c(0375) = 005605;
-    c(0376) = 004003;
+    mem0(0067) = 077777;
+    mem0(0157) = 077777;
+    mem0(0375) = 005605;
+    mem0(0376) = 004003;
   }
 
   if(core_dump != NULL)
@@ -331,7 +331,7 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
         if(1 != fscanf(cd, "%o", &j))
           goto Done;
         if(all_or_erasable)
-          state->input_channel[i] = j;
+          input(i) = j;
       }
 
       // Load up erasable memory.
