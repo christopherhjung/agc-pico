@@ -185,7 +185,7 @@ int agc_load_binfile(agc_state_t* state, const char* RomImage)
       goto Done;
     }
     raw_value = (In[0] * 256 + In[1]);
-    parity   = raw_value & 1;
+    parity    = raw_value & 1;
 
     state->fixed[bank][j] = raw_value >> 1;
     state->parities[(bank * 02000 + j) / 32] |= parity << (j % 32);
@@ -222,8 +222,8 @@ Done:
 int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_dump, int all_or_erasable)
 {
   uint64_t lli;
-  int   ret = 0, i, j, Bank;
-  FILE* cd  = NULL;
+  int      ret = 0, i, j, Bank;
+  FILE*    cd  = NULL;
 
   // Fix for Issue #29 Return the values as the API documents
   if(rom_image)
@@ -421,4 +421,3 @@ Done:
 
 //-------------------------------------------------------------------------------
 // A function for creating a core-dump which can be read by agc_engine_init.
-

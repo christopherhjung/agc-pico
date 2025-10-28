@@ -3,5 +3,4 @@
 
 void dsky_output_handle()
 {
-
 }

@@ -47,10 +47,9 @@
 #ifdef PLATFORMIO
 #include <Arduino.h>
 #else
-#include <unistd.h>
 #include <stdio.h>
+#include <unistd.h>
 #endif
-
 
 /** Declare the singleton Simulator object instance */
 static sim_t Simulator;
@@ -260,7 +259,7 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
-  agc_engine_init (&Simulator.state, "state/Core.bin", NULL, 0);
+  agc_engine_init(&Simulator.state, "state/Core.bin", NULL, 0);
   while(1)
   {
     /* Manage the Simulated Time */

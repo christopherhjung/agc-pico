@@ -41,7 +41,8 @@
 #include "agc_engine.h"
 
 #ifdef PLATFORMIO
-struct tms {
+struct tms
+{
   clock_t tms_utime;  /* user time */
   clock_t tms_stime;  /* system time */
   clock_t tms_cutime; /* user time of children */
@@ -50,7 +51,7 @@ struct tms {
 
 #define _SC_CLK_TCK (1000)
 #define sysconf(x) (x)
-#define times(p) (clock_t) 0
+#define times(p) (clock_t)0
 
 #else
 

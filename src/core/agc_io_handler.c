@@ -48,15 +48,15 @@
 #include "ringbuffer.h"
 
 int16_t last_rhc_pitch = 0;
-int16_t last_rhc_yaw = 0;
-int16_t last_rhc_roll = 0;
+int16_t last_rhc_yaw   = 0;
+int16_t last_rhc_roll  = 0;
 
 static int channel_is_set_up = 0;
 
 static void channel_setup(agc_state_t* state)
 {
   channel_is_set_up = 1;
-  
+
   ringbuffer_init(&ringbuffer_out);
   ringbuffer_init(&ringbuffer_in);
 }
@@ -119,8 +119,7 @@ int agc_channel_input(agc_state_t* state)
     }
 
     // Mask out irrelevant bits, set current bits, and write to CPU.
-    packet.value |=
-      read_io(state, packet.channel) & ~077777;
+    packet.value |= read_io(state, packet.channel) & ~077777;
     write_io(state, packet.channel, packet.value);
 
     // If this is a keystroke from the DSKY, generate an interrupt req.
@@ -133,8 +132,8 @@ int agc_channel_input(agc_state_t* state)
     // UPRUPT interrupt request should be set.
     else if(packet.channel == 0173)
     {
-      c(RegINLINK) = (packet.value & 077777);
-      state->interrupt_requests[7]  = 1;
+      c(RegINLINK)                 = (packet.value & 077777);
+      state->interrupt_requests[7] = 1;
     }
     // Fictitious registers for rotational hand controller (RHC).
     // Note that the RHC angles are not immediately used, but
