@@ -1133,27 +1133,27 @@ int counter_minc(int16_t* counter)
 int counter_pcdu(int16_t* counter)
 {
   int16_t i;
-  int     Overflow = 0;
+  int     ovf = 0;
   i                = *counter;
   if(i == (int16_t)077777)
-    Overflow = 1;
+    ovf = 1;
   i++;
   i &= 077777;
   *counter = i;
-  return (Overflow);
+  return (ovf);
 }
 
 // 2's-complement decrement.
-int counter_mcdu(int16_t* Counter)
+int counter_mcdu(int16_t* counter)
 {
   int16_t i;
   int     ovf = 0;
-  i                = *Counter;
+  i                = *counter;
   if(i == 0)
     ovf = 1;
   i--;
   i &= 077777;
-  *Counter = i;
+  *counter = i;
   return (ovf);
 }
 
