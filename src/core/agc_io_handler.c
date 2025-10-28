@@ -56,7 +56,7 @@ static int channel_is_set_up = 0;
 static void channel_setup(agc_state_t* state)
 {
   channel_is_set_up = 1;
-
+  
   ringbuffer_init(&ringbuffer_out);
   ringbuffer_init(&ringbuffer_in);
 }

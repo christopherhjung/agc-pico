@@ -337,7 +337,7 @@ When errors are encountered the parser will return a NULL reference
 \param argc The argument count
 \param *argv The pointer to the argument array.
 \return A handle to an Option structure. */
-opt_t* CliParseArguments(int argc, char* argv[])
+opt_t* cli_parse_args(int argc, char* argv[])
 {
   opt_t* result = (opt_t*)0;
   int    i;

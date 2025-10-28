@@ -1018,21 +1018,19 @@ static int sp_to_decent(int16_t* lsb_sp)
   return (val);
 }
 
-static void decent_to_sp(int Decent, int16_t* lsb_sp)
+static void decent_to_sp(int decent, int16_t* lsb_sp)
 {
-  int Sign;
-  Sign   = (Decent & 04000000000);
-  *lsb_sp = (037777 & Decent);
+  int Sign   = (decent & 04000000000);
+  *lsb_sp = (037777 & decent);
   if(Sign)
     *lsb_sp |= 040000;
-  lsb_sp[-1] = overflow_corrected(0177777 & (Decent >> 14)); // Was 13.
+  lsb_sp[-1] = overflow_corrected(0177777 & (decent >> 14)); // Was 13.
 }
 
 // Adds two sign-extended SP values.  The result may contain overflow.
 int add_sp_16(int addend1, int addend2)
 {
-  int Sum;
-  Sum = addend1 + addend2;
+  int Sum = addend1 + addend2;
   if(Sum & 0200000)
   {
     Sum += AGC_P1;
@@ -1734,111 +1732,11 @@ static unsigned OldChannel14 = 0, GyroTimer = 0;
 // to make it look pretty
 #define IMUCDU_BURST_CYCLES \
   ((600 * 1024000) / (1000 * 12 * COARSE_SMOOTH))
-static uint64_t ImuCduCount  = 0;
-static unsigned ImuChannel14 = 0;
+static uint64_t imu_cdu_count  = 0;
+static unsigned imu_channel_14 = 0;
 
-int agc_engine(agc_state_t* state)
+int handle_counter_timers(agc_state_t* state)
 {
-  uint16_t pc, inst, /*OpCode,*/ quarter_code, s_extra_code;
-  int16_t* where_word;
-  uint16_t address_12, address_10, address_9;
-  int      ValueK, KeepExtraCode = 0;
-  //int Operand;
-  int16_t  pperand_16;
-  int16_t  eb, fb, bb;
-  uint16_t ext_ppcode;
-  int      ovf, acc;
-  //int OverflowQ, Qumulator;
-  // Keep track of TC executions for the TC Trap alarm
-  int executed_tc   = 0;
-  int tc_transient  = 0;
-  int just_took_bzf  = 0;
-  int just_took_bzmf = 0;
-
-  s_extra_code = 0;
-
-  // For DOWNRUPT
-  if(state->downrupt_time_valid && state->cycle_counter >= state->downrupt_time)
-  {
-    state->interrupt_requests[8] = 1; // Request DOWNRUPT
-    state->downrupt_time_valid   = 0;
-  }
-
-  // The first time through the loop, light up the DSKY RESTART light
-  if(state->cycle_counter == 0)
-  {
-    state->restart_light = 1;
-  }
-
-  state->cycle_counter++;
-
-  //----------------------------------------------------------------------
-  // Update the thingy that determines when 1/1600 second has passed.
-  // 1/1600 is the basic timing used to drive timer registers.  1/1600
-  // second happens to be 160/3 machine cycles.
-
-  state->scale_counter += SCALER_DIVIDER;
-  state->dsky_timer += SCALER_DIVIDER;
-
-  //-------------------------------------------------------------------------
-
-  // Handle server stuff for socket connections used for i/o channel
-  // communications.  Stuff like listening for clients we only do
-  // every once and a while---nominally, every 100 ms.  Actually
-  // processing input data is done every cycle.
-  if(state->channel_routine_count == 0)
-    channel_routine(state);
-  state->channel_routine_count = ((state->channel_routine_count + 1) & 017777);
-
-  // Update the various hardware-driven DSKY lights
-  update_dsky(state);
-
-  // Get data from input channels.  Return immediately if a unprogrammed
-  // counter-increment was performed.
-  if(agc_channel_input(state))
-    return (0);
-
-  // If in --debug-dsky mode, don't want to take the chance of executing
-  // any AGC code, since there isn't any loaded anyway.
-  if(DebugDsky)
-    return (0);
-
-  //----------------------------------------------------------------------
-  // This stuff takes care of extra CPU cycles used by some instructions.
-
-  // A little extra delay, needed sometimes after branch instructions that
-  // don't always take the same amount of time.
-  if(state->extra_delay)
-  {
-    state->extra_delay--;
-    return (0);
-  }
-
-  // If an instruction that takes more than one clock-cycle is in progress,
-  // we simply return.  We don't do any of the actual computations for such
-  // an instruction until the last clock cycle for it is reached.
-  // (Except for a few weird cases dealt with by ExtraDelay as above.)
-  if(state->pend_flag && state->pend_delay > 0)
-  {
-    state->pend_delay--;
-    return (0);
-  }
-
-  //----------------------------------------------------------------------
-  // Take care of any PCDU or MCDU operations that are lingering in CDU
-  // FIFOs.
-  if(sdu_fifo(state))
-  {
-    // A CDU counter was serviced, so a cycle was used up, and we must
-    // return.
-    return (0);
-  }
-
-  if(state->input_channel[032] & 020000)
-  {
-    state->sby_pressed       = 0;
-    state->sby_still_pressed = 0;
-  }
 
   //----------------------------------------------------------------------
   // Here we take care of counter-timers.  There is a basic 1/3200 second
@@ -2162,10 +2060,11 @@ int agc_engine(agc_state_t* state)
     }
   }
 
-  // If we're in standby mode, this is all we can accomplish --
-  // everything else is switched off.
-  if(state->standby)
-    return (0);
+  return 1;
+}
+
+void handle_gyro(agc_state_t* state)
+{
 
     //----------------------------------------------------------------------
     // Same principle as for the counter-timers (above), but for handling
@@ -2238,40 +2137,48 @@ int agc_engine(agc_state_t* state)
   }
 #endif // GYRO_TIMING_SIMULATED
 
+}
+
+void handle_imu(agc_state_t* state)
+{
   //----------------------------------------------------------------------
   // ... and somewhat similar principles for the IMU CDU drive for
   // coarse alignment.
 
-#if 0
-  i = (state->input_channel[014] & 070000);	// Check IMU CDU drive bits.
-  if (ImuChannel14 == 0 && i != 0)// If suddenly active, start drive.
-  ImuCduCount = IMUCDU_BURST_CYCLES;
-  if (i != 0 && ImuCduCount >= IMUCDU_BURST_CYCLES)// Time for next burst.
-    {
-      // Adjust the cycle counter.
-      ImuCduCount -= IMUCDU_BURST_CYCLES;
-      // Determine how many pulses are wanted on each axis this burst.
-      ImuChannel14 = burst_output (state, 040000, RegCDUXCMD, 0174);
-      ImuChannel14 |= burst_output (state, 020000, RegCDUYCMD, 0175);
-      ImuChannel14 |= burst_output (state, 010000, RegCDUZCMD, 0176);
-    }
-  else
-  ImuCduCount++;
-#else  // 0
-  i = (state->input_channel[014] & 070000); // Check IMU CDU drive bits.
-  if(ImuChannel14 == 0 && i != 0) // If suddenly active, start drive.
-    ImuCduCount = state->cycle_counter - IMUCDU_BURST_CYCLES;
-  if(i != 0 && (state->cycle_counter - ImuCduCount) >= IMUCDU_BURST_CYCLES) // Time for next burst.
+#if 1
+  int i = (state->input_channel[014] & 070000);	// Check IMU CDU drive bits.
+  if (imu_channel_14 == 0 && i != 0)// If suddenly active, start drive.
+    imu_cdu_count = IMUCDU_BURST_CYCLES;
+  if (i != 0 && imu_cdu_count >= IMUCDU_BURST_CYCLES)// Time for next burst.
   {
     // Adjust the cycle counter.
-    ImuCduCount += IMUCDU_BURST_CYCLES;
+    imu_cdu_count -= IMUCDU_BURST_CYCLES;
     // Determine how many pulses are wanted on each axis this burst.
-    ImuChannel14 = burst_output(state, 040000, RegCDUXCMD, 0174);
-    ImuChannel14 |= burst_output(state, 020000, RegCDUYCMD, 0175);
-    ImuChannel14 |= burst_output(state, 010000, RegCDUZCMD, 0176);
+    imu_channel_14 = burst_output (state, 040000, RegCDUXCMD, 0174);
+    imu_channel_14 |= burst_output (state, 020000, RegCDUYCMD, 0175);
+    imu_channel_14 |= burst_output (state, 010000, RegCDUZCMD, 0176);
+  }
+  else
+    imu_cdu_count++;
+#else  // 0
+  i = (state->input_channel[014] & 070000); // Check IMU CDU drive bits.
+  if(imu_channel_14 == 0 && i != 0) // If suddenly active, start drive.
+    imu_cdu_count = state->cycle_counter - IMUCDU_BURST_CYCLES;
+  if(i != 0 && (state->cycle_counter - imu_cdu_count) >= IMUCDU_BURST_CYCLES) // Time for next burst.
+  {
+    // Adjust the cycle counter.
+    imu_cdu_count += IMUCDU_BURST_CYCLES;
+    // Determine how many pulses are wanted on each axis this burst.
+    imu_channel_14 = burst_output(state, 040000, RegCDUXCMD, 0174);
+    imu_channel_14 |= burst_output(state, 020000, RegCDUYCMD, 0175);
+    imu_channel_14 |= burst_output(state, 010000, RegCDUZCMD, 0176);
   }
 #endif // 0
 
+}
+
+void handle_optics(agc_state_t* state)
+{
   //----------------------------------------------------------------------
   // Finally, stuff for driving the optics shaft & trunnion CDUs.  Nothing
   // fancy like the fine-alignment and coarse-alignment stuff above.
@@ -2288,17 +2195,119 @@ int agc_engine(agc_state_t* state)
     agc_channel_output(state, 0171, c(RegOPTY));
     c(RegOPTY) = 0;
   }
+}
+
+int agc_engine(agc_state_t* state)
+{
+  //int Operand;
+  //int OverflowQ, Qumulator;
+  // Keep track of TC executions for the TC Trap alarm
+
+  // For DOWNRUPT
+  if(state->downrupt_time_valid && state->cycle_counter >= state->downrupt_time)
+  {
+    state->interrupt_requests[8] = 1; // Request DOWNRUPT
+    state->downrupt_time_valid   = 0;
+  }
+
+  // The first time through the loop, light up the DSKY RESTART light
+  if(state->cycle_counter == 0)
+  {
+    state->restart_light = 1;
+  }
+
+  state->cycle_counter++;
+
+  //----------------------------------------------------------------------
+  // Update the thingy that determines when 1/1600 second has passed.
+  // 1/1600 is the basic timing used to drive timer registers.  1/1600
+  // second happens to be 160/3 machine cycles.
+
+  state->scale_counter += SCALER_DIVIDER;
+  state->dsky_timer += SCALER_DIVIDER;
+
+  //-------------------------------------------------------------------------
+
+  // Handle server stuff for socket connections used for i/o channel
+  // communications.  Stuff like listening for clients we only do
+  // every once and a while---nominally, every 100 ms.  Actually
+  // processing input data is done every cycle.
+  if(state->channel_routine_count == 0)
+    channel_routine(state);
+  state->channel_routine_count = ((state->channel_routine_count + 1) & 017777);
+
+  // Update the various hardware-driven DSKY lights
+  update_dsky(state);
+
+  // Get data from input channels.  Return immediately if a unprogrammed
+  // counter-increment was performed.
+  if(agc_channel_input(state))
+    return (0);
+
+  // If in --debug-dsky mode, don't want to take the chance of executing
+  // any AGC code, since there isn't any loaded anyway.
+  if(DebugDsky)
+    return (0);
+
+  //----------------------------------------------------------------------
+  // This stuff takes care of extra CPU cycles used by some instructions.
+
+  // A little extra delay, needed sometimes after branch instructions that
+  // don't always take the same amount of time.
+  if(state->extra_delay)
+  {
+    state->extra_delay--;
+    return (0);
+  }
+
+  // If an instruction that takes more than one clock-cycle is in progress,
+  // we simply return.  We don't do any of the actual computations for such
+  // an instruction until the last clock cycle for it is reached.
+  // (Except for a few weird cases dealt with by ExtraDelay as above.)
+  if(state->pend_flag && state->pend_delay > 0)
+  {
+    state->pend_delay--;
+    return (0);
+  }
+
+  //----------------------------------------------------------------------
+  // Take care of any PCDU or MCDU operations that are lingering in CDU
+  // FIFOs.
+  if(sdu_fifo(state))
+  {
+    // A CDU counter was serviced, so a cycle was used up, and we must
+    // return.
+    return (0);
+  }
+
+  if(state->input_channel[032] & 020000)
+  {
+    state->sby_pressed       = 0;
+    state->sby_still_pressed = 0;
+  }
+
+  if(!handle_counter_timers(state))
+    return 0;
+
+  // If we're in standby mode, this is all we can accomplish --
+  // everything else is switched off.
+  if(state->standby)
+    return (0);
+
+  handle_gyro(state);
+  handle_imu(state);
+  handle_optics(state);
 
   //----------------------------------------------------------------------
   // Okay, here's the stuff that actually has to do with decoding instructions.
 
   // Store the current value of several registers.
-  eb = c(RegEB);
-  fb = c(RegFB);
-  bb = c(RegBB);
+  int16_t eb = c(RegEB);
+  int16_t fb = c(RegFB);
+  int16_t bb = c(RegBB);
   // Reform 16-bit accumulator and test for overflow in accumulator.
-  acc = c(RegA) & 0177777;
-  ovf    = (value_ovf(acc) != AGC_P0);
+  int acc    = c(RegA) & 0177777;
+  int ovf    = (value_ovf(acc) != AGC_P0);
   //Qumulator = GetQ (State);
   //OverflowQ = (ValueOverflowed (Qumulator) != AGC_P0);
 
@@ -2306,11 +2315,11 @@ int agc_engine(agc_state_t* state)
   // indicate the next instruction to be executed. The Z register is 16
   // bits long, but its value is transferred to the 12-bit S regsiter for
   // addressing, so the upper bits are lost.
-  pc = c(RegZ) & 07777;
-  where_word      = find_memory_word(state, pc);
+  uint16_t pc = c(RegZ) & 07777;
+  int16_t* where_word      = find_memory_word(state, pc);
 
   // Fetch the instruction itself.
-  //Instruction = *WhereWord;
+  uint16_t inst;
   if(state->substitute_instruction)
     inst = c(RegBRUPT);
   else
@@ -2323,16 +2332,13 @@ int agc_engine(agc_state_t* state)
   }
   inst &= 077777;
 
-  s_extra_code = state->extra_code;
 
-  ext_ppcode = inst >> 9; //2;
+  uint16_t s_extra_code = state->extra_code;
+
+  uint16_t ext_ppcode = inst >> 9; //2;
   if(s_extra_code)
     ext_ppcode |= 0100;
 
-  quarter_code = inst & ~MASK10;
-  address_12   = inst & MASK12;
-  address_10   = inst & MASK10;
-  address_9    = inst & MASK9;
 
   // Handle interrupts.
   if(
@@ -2348,7 +2354,7 @@ int agc_engine(agc_state_t* state)
     // request. There's two extra MCTs associated with taking an
     // interrupt -- one each for filling ZRUPT and BRUPT.
     // Search for the next interrupt request.
-    for(i = 1; i <= NUM_INTERRUPT_TYPES; i++)
+    for(int i = 1; i <= NUM_INTERRUPT_TYPES; i++)
     {
       if(state->interrupt_requests[i])
       {
@@ -2395,10 +2401,10 @@ int agc_engine(agc_state_t* state)
   // AFTER executing the instruction -- not because it's more logically
   // correct, just because it's easier. EDRUPT's timing is handled with
   // the interrupt logic.
+
   if(!state->pend_flag)
   {
-    int i;
-    i = quarter_code >> 10;
+    int i = inst >> 10;
     if(state->extra_code)
       i = ExtracodeTiming[i];
     else
@@ -2429,12 +2435,21 @@ int agc_engine(agc_state_t* state)
   // executed (really, it happens at the end of the previous instruction).
   c(RegZ) = state->next_z;
 
+  uint16_t address_12   = inst & MASK12;
+  uint16_t address_10   = inst & MASK10;
+  uint16_t address_9    = inst & MASK9;
+  int tc_transient  = 0;
   // A BZF followed by an instruction other than EXTEND causes a TCF0 transient
   if(state->took_bzf && !((ext_ppcode == 000) && (address_12 == 6)))
     tc_transient = 1;
 
   // Parse the instruction.  Refer to p.34 of 1689.pdf for an easy
   // picture of what follows.
+  int16_t  op_16;
+  int      ValueK, KeepExtraCode = 0;
+  int executed_tc   = 0;
+  int just_took_bzf  = 0;
+  int just_took_bzmf = 0;
   switch(ext_ppcode)
   {
     case 000: // TC.
@@ -2486,17 +2501,17 @@ int agc_engine(agc_state_t* state)
       if(address_10 < REG16)
       {
         ValueK    = 0177777 & c(address_10);
-        pperand_16 = overflow_corrected(ValueK);
+        op_16 = overflow_corrected(ValueK);
         c(RegA)   = odabs(ValueK);
       }
       else // K!=accumulator.
       {
         where_word = find_memory_word(state, address_10);
-        pperand_16 = *where_word & 077777;
+        op_16 = *where_word & 077777;
         // Compute the "diminished absolute value", and save in accumulator.
-        c(RegA) = dabs(pperand_16);
+        c(RegA) = dabs(op_16);
         // Assign back the read data in case editing is needed
-        assign_from_pointer(state, where_word, pperand_16);
+        assign_from_pointer(state, where_word, op_16);
       }
       // Now perform the actual comparison and jump on the basis
       // of it.  There's no explanation I can find as to what
@@ -2510,11 +2525,11 @@ int agc_engine(agc_state_t* state)
         state->next_z += 0;
       else if(address_10 < REG16 && value_ovf(ValueK) == AGC_M1)
         state->next_z += 2;
-      else if(pperand_16 == AGC_P0)
+      else if(op_16 == AGC_P0)
         state->next_z += 1;
-      else if(pperand_16 == AGC_M0)
+      else if(op_16 == AGC_M0)
         state->next_z += 3;
-      else if(0 != (pperand_16 & 040000))
+      else if(0 != (op_16 & 040000))
         state->next_z += 2;
       break;
     case 012: // TCF.
@@ -2593,23 +2608,23 @@ int agc_engine(agc_state_t* state)
         c(RegL) = AGC_P0;
       else if(address_10 < REG16)
       {
-        pperand_16 = c(RegL);
+        op_16 = c(RegL);
         c(RegL)   = c(address_10);
         if(address_10 >= 020 && address_10 <= 023)
           assign_from_pointer(
-            state, where_word, overflow_corrected(0177777 & pperand_16));
+            state, where_word, overflow_corrected(0177777 & op_16));
         else
-          c(address_10) = pperand_16;
+          c(address_10) = op_16;
         if(address_10 == RegZ)
           state->next_z = c(RegZ);
       }
       else
       {
         where_word = find_memory_word(state, address_10);
-        pperand_16 = *where_word;
+        op_16 = *where_word;
         assign_from_pointer(
           state, where_word, overflow_corrected(0177777 & c(RegL)));
-        c(RegL) = sign_extend(pperand_16);
+        c(RegL) = sign_extend(op_16);
       }
       break;
     case 024: // INCR.
@@ -2662,7 +2677,6 @@ int agc_engine(agc_state_t* state)
       if(address_12 < REG16)
       {
         c(RegA) = c(address_12);
-        ;
         break;
       }
       where_word = find_memory_word(state, address_12);
@@ -2682,7 +2696,6 @@ int agc_engine(agc_state_t* state)
       if(IsA(address_12)) // COM
       {
         c(RegA) = ~acc;
-        ;
         break;
       }
       if(address_12 < REG16)
@@ -2747,33 +2760,33 @@ int agc_engine(agc_state_t* state)
       // Topmost word.
       if(address_10 < REG16)
       {
-        pperand_16    = c(address_10);
+        op_16    = c(address_10);
         c(address_10) = c(RegL);
-        c(RegL)      = pperand_16;
+        c(RegL)      = op_16;
         if(address_10 == RegZ)
           state->next_z = c(RegZ);
       }
       else
       {
-        pperand_16 = sign_extend(*where_word);
+        op_16 = sign_extend(*where_word);
         assign_from_pointer(state, where_word, overflow_corrected(c(RegL)));
-        c(RegL) = pperand_16;
+        c(RegL) = op_16;
       }
       c(RegL) = sign_extend(overflow_corrected(c(RegL)));
       // Bottom word.
       if(address_10 < REG16 + 1)
       {
-        pperand_16        = c(address_10 - 1);
+        op_16        = c(address_10 - 1);
         c(address_10 - 1) = c(RegA);
-        c(RegA)          = pperand_16;
+        c(RegA)          = op_16;
         if(address_10 == RegZ + 1)
           state->next_z = c(RegZ);
       }
       else
       {
-        pperand_16 = sign_extend(where_word[-1]);
+        op_16 = sign_extend(where_word[-1]);
         assign_from_pointer(state, where_word - 1, overflow_corrected(c(RegA)));
-        c(RegA) = pperand_16;
+        c(RegA) = op_16;
       }
       break;
     case 054: // TS
@@ -2875,9 +2888,9 @@ int agc_engine(agc_state_t* state)
         c(RegA) = (acc & c(address_9));
       else
       {
-        pperand_16 = overflow_corrected(acc);
-        pperand_16 &= read_io(state, address_9);
-        c(RegA) = sign_extend(pperand_16);
+        op_16 = overflow_corrected(acc);
+        op_16 &= read_io(state, address_9);
+        c(RegA) = sign_extend(op_16);
       }
       break;
     case 0103: // WAND
@@ -2885,10 +2898,10 @@ int agc_engine(agc_state_t* state)
         c(RegA) = c(address_9) = (acc & c(address_9));
       else
       {
-        pperand_16 = overflow_corrected(acc);
-        pperand_16 &= read_io(state, address_9);
-        cpu_write_io(state, address_9, pperand_16);
-        c(RegA) = sign_extend(pperand_16);
+        op_16 = overflow_corrected(acc);
+        op_16 &= read_io(state, address_9);
+        cpu_write_io(state, address_9, op_16);
+        c(RegA) = sign_extend(op_16);
       }
       break;
     case 0104: // ROR
@@ -2896,9 +2909,9 @@ int agc_engine(agc_state_t* state)
         c(RegA) = (acc | c(address_9));
       else
       {
-        pperand_16 = overflow_corrected(acc);
-        pperand_16 |= read_io(state, address_9);
-        c(RegA) = sign_extend(pperand_16);
+        op_16 = overflow_corrected(acc);
+        op_16 |= read_io(state, address_9);
+        c(RegA) = sign_extend(op_16);
       }
       break;
     case 0105: // WOR
@@ -2906,10 +2919,10 @@ int agc_engine(agc_state_t* state)
         c(RegA) = c(address_9) = (acc | c(address_9));
       else
       {
-        pperand_16 = overflow_corrected(acc);
-        pperand_16 |= read_io(state, address_9);
-        cpu_write_io(state, address_9, pperand_16);
-        c(RegA) = sign_extend(pperand_16);
+        op_16 = overflow_corrected(acc);
+        op_16 |= read_io(state, address_9);
+        cpu_write_io(state, address_9, op_16);
+        c(RegA) = sign_extend(op_16);
       }
       break;
     case 0106: // RXOR
@@ -2917,9 +2930,9 @@ int agc_engine(agc_state_t* state)
         c(RegA) = (acc ^ c(address_9));
       else
       {
-        pperand_16 = overflow_corrected(acc);
-        pperand_16 ^= read_io(state, address_9);
-        c(RegA) = sign_extend(pperand_16);
+        op_16 = overflow_corrected(acc);
+        op_16 ^= read_io(state, address_9);
+        c(RegA) = sign_extend(op_16);
       }
       break;
     case 0107: // EDRUPT
@@ -2990,33 +3003,33 @@ int agc_engine(agc_state_t* state)
         if((040000 & c(RegL)) == (040000 & overflow_corrected(Div16)))
         {
           if(AbsK == 0)
-            pperand_16 = 037777; // Max positive value.
+            op_16 = 037777; // Max positive value.
           else
-            pperand_16 = AGC_P0;
+            op_16 = AGC_P0;
         }
         else
         {
           if(AbsK == 0)
-            pperand_16 = (077777 & ~037777); // Max negative value.
+            op_16 = (077777 & ~037777); // Max negative value.
           else
-            pperand_16 = AGC_M0;
+            op_16 = AGC_M0;
         }
 
-        c(RegA) = sign_extend(pperand_16);
+        c(RegA) = sign_extend(op_16);
       }
       else if(AbsA == AbsK && AbsL == AGC_P0)
       {
         // The divisor is equal to the dividend.
         if(AccPair[0] == overflow_corrected(Div16)) // Signs agree?
         {
-          pperand_16 = 037777; // Max positive value.
+          op_16 = 037777; // Max positive value.
         }
         else
         {
-          pperand_16 = (077777 & ~037777); // Max negative value.
+          op_16 = (077777 & ~037777); // Max negative value.
         }
         c(RegL) = sign_extend(AccPair[0]);
-        c(RegA) = sign_extend(pperand_16);
+        c(RegA) = sign_extend(op_16);
       }
       else
       {
@@ -3088,8 +3101,8 @@ int agc_engine(agc_state_t* state)
         c(RegA) = 0177777 & diff;
       else
       {
-        pperand_16 = (077777 & diff);
-        c(RegA)   = sign_extend(pperand_16);
+        op_16 = (077777 & diff);
+        c(RegA)   = sign_extend(op_16);
       }
       if(address_10 >= 020 && address_10 <= 023)
         assign_from_pointer(state, where_word, *where_word);
@@ -3103,18 +3116,18 @@ int agc_engine(agc_state_t* state)
         c(RegQ) = AGC_P0;
       else if(address_10 < REG16)
       {
-        pperand_16    = c(RegQ);
+        op_16    = c(RegQ);
         c(RegQ)      = c(address_10);
-        c(address_10) = pperand_16;
+        c(address_10) = op_16;
         if(address_10 == RegZ)
           state->next_z = c(RegZ);
       }
       else
       {
         where_word = find_memory_word(state, address_10);
-        pperand_16 = overflow_corrected(c(RegQ));
+        op_16 = overflow_corrected(c(RegQ));
         c(RegQ)   = sign_extend(*where_word);
-        assign_from_pointer(state, where_word, pperand_16);
+        assign_from_pointer(state, where_word, op_16);
       }
       break;
     case 0124: // AUG
@@ -3275,16 +3288,16 @@ int agc_engine(agc_state_t* state)
       int16_t ms_word, ls_word, other_op_16;
       int     prod;
       where_word = find_memory_word(state, address_12);
-      pperand_16 = overflow_corrected(acc);
+      op_16 = overflow_corrected(acc);
       if(address_12 < REG16)
         other_op_16 = overflow_corrected(c(address_12));
       else
         other_op_16 = *where_word;
       if(other_op_16 == AGC_P0 || other_op_16 == AGC_M0)
         ms_word = ls_word = AGC_P0;
-      else if(pperand_16 == AGC_P0 || pperand_16 == AGC_M0)
+      else if(op_16 == AGC_P0 || op_16 == AGC_M0)
       {
-        if((pperand_16 == AGC_P0 && 0 != (040000 & other_op_16)) || (pperand_16 == AGC_M0 && 0 == (040000 & other_op_16)))
+        if((op_16 == AGC_P0 && 0 != (040000 & other_op_16)) || (op_16 == AGC_M0 && 0 == (040000 & other_op_16)))
           ms_word = ls_word = AGC_M0;
         else
           ms_word = ls_word = AGC_P0;
@@ -3292,7 +3305,7 @@ int agc_engine(agc_state_t* state)
       else
       {
         int16_t WordPair[2];
-        prod = agc2cpu(sign_extend(pperand_16))
+        prod = agc2cpu(sign_extend(op_16))
           * agc2cpu(sign_extend(other_op_16));
         prod = cpu2agc2(prod);
         // Sign-extend, because it's needed for DecentToSp.

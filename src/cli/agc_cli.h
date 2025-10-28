@@ -44,4 +44,4 @@
 #define CLI_E_UNKOWNTOKEN 1
 #include "core/agc_simulator.h"
 
-extern opt_t* CliParseArguments(int argc, char* argv[]);
+extern opt_t* cli_parse_args(int argc, char* argv[]);
