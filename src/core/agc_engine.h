@@ -273,6 +273,8 @@
 #define DL_CM_ENTRY_UPDATE 9
 #define DL_LM_AGS_INITIALIZATION_UPDATE 10
 
+#define c(Reg) state->erasable[0][Reg]
+
 //--------------------------------------------------------------------------
 // Each instance of the AGC CPU simulation has a data structure of type agc_t
 // that contains the CPU's internal states, the complete memory space, and any
@@ -365,8 +367,8 @@ int     add_sp_16(int Addend1, int Addend2);
 void unprogrammed_increment(agc_state_t* state, int counter, int inc_type);
 
 // API for yaAGC-to-peripheral communications.
-void agc_channel_output(agc_state_t* State, int channel, int value);
-int  agc_channel_input(agc_state_t* State);
+void agc_channel_output(agc_state_t* state, int channel, int value);
+int  agc_channel_input(agc_state_t* state);
 int  dsky_channel_input(int* channel, int* value);
 int  dsky_channel_output(int channel, int value);
 void channel_routine(agc_state_t* state);

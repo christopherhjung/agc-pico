@@ -245,7 +245,7 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
   for(Bank = 0; Bank < 8; Bank++)
     for(j = 0; j < 0400; j++)
       state->erasable[Bank][j] = 0;
-  state->erasable[0][RegZ] = 04000; // Initial program counter.
+  c(RegZ) = 04000; // Initial program counter.
 
   // Set up the CPU state variables that aren't part of normal memory.
   state->cycle_counter   = 0;
@@ -305,10 +305,10 @@ int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_
 
   if(initializeSunburst37)
   {
-    state->erasable[0][0067] = 077777;
-    state->erasable[0][0157] = 077777;
-    state->erasable[0][0375] = 005605;
-    state->erasable[0][0376] = 004003;
+    c(0067) = 077777;
+    c(0157) = 077777;
+    c(0375) = 005605;
+    c(0376) = 004003;
   }
 
   if(core_dump != NULL)

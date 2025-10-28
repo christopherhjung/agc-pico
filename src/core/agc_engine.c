@@ -453,7 +453,6 @@
 #define COARSE_SMOOTH 8
 
 // Some helpful macros for manipulating registers.
-#define c(Reg) state->erasable[0][Reg]
 #define IsA(Address) ((Address) == RegA)
 #define IsL(Address) ((Address) == RegL)
 #define IsQ(Address) ((Address) == RegQ)
@@ -539,7 +538,7 @@ int read_io(agc_state_t* state, int Address)
   if(Address < 0 || Address > 0777)
     return (0);
   if(Address == RegL || Address == RegQ)
-    return (state->erasable[0][Address]);
+    return (c(Address));
   return (state->input_channel[Address]);
 }
 
@@ -550,7 +549,7 @@ void write_io(agc_state_t* state, int Address, int Value)
   if(Address < 0 || Address > 0777)
     return;
   if(Address == RegL || Address == RegQ)
-    state->erasable[0][Address] = Value;
+    c(Address) = Value;
 
   if(Address == 010)
   {
@@ -678,7 +677,7 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
   // is concerned, that the following rules actually do result in continuous
   // block of memory that don't have problems in crossing bank boundaries.
   if(addr_12 < 00400) // Unswitched-erasable.
-    return (&state->erasable[0][addr_12 & 00377]);
+    return (&c(addr_12 & 00377));
   else if(addr_12 < 01000) // Unswitched-erasable (continued).
     return (&state->erasable[1][addr_12 & 00377]);
   else if(addr_12 < 01400) // Unswitched-erasable (continued).
@@ -780,9 +779,9 @@ static void assign(agc_state_t* state, int bank, int offset, int value)
         break;
     }
     if(offset >= REG16 || (offset >= 020 && offset <= 023))
-      state->erasable[0][offset] = value & 077777;
+      c(offset) = value & 077777;
     else
-      state->erasable[0][offset] = value & 0177777;
+      c(offset) = value & 0177777;
   }
   else
     state->erasable[bank][offset] = value & 077777;
@@ -1375,7 +1374,7 @@ static int sdu_fifo(agc_state_t* state)
   if(cdu_fifo->size > 0 && state->cycle_counter >= cdu_fifo->next_update)
   {
     // Update the counter.
-    ch        = &state->erasable[0][CduChecker + FIRST_CDU];
+    ch        = &c(CduChecker + FIRST_CDU);
     count     = cdu_fifo->counts[cdu_fifo->ptr];
     high_rate  = (count & 0x80000000);
     down_count = (count & 0x40000000);
@@ -1446,7 +1445,7 @@ void unprogrammed_increment(agc_state_t* state, int counter, int inc_type)
 {
   int      ovf = 0;
   counter &= 0x7f;
-  int16_t* ch = &state->erasable[0][counter];
+  int16_t* ch = &c(counter);
   switch(inc_type)
   {
     case 0:
@@ -1514,8 +1513,8 @@ static int burst_output(agc_state_t* state, int drive_bit_mask, int counter_regi
   // If so, we must retrieve the count from the counter register.
   if(drive_bit)
   {
-    drive_count = state->erasable[0][counter_register];
-    state->erasable[0][counter_register] = 0;
+    drive_count = c(counter_register);
+    c(counter_register) = 0;
   }
   // The count may be negative.  If so, normalize to be positive and set the
   // direction flag.
@@ -2182,11 +2181,11 @@ int agc_engine(agc_state_t* state)
     GyroTimer -= GYRO_OVERFLOW;
     // We get to this point 3200 times per second.  We increment the
     // pulse count only if the GYRO ACTIVITY bit in channel 014 is set.
-    if(0 != (state->input_channel[014] & 01000) && state->erasable[0][RegGYROCTR] > 0)
+    if(0 != (state->input_channel[014] & 01000) && c(RegGYROCTR) > 0)
     {
       GyroCount++;
-      state->erasable[0][RegGYROCTR]--;
-      if(state->erasable[0][RegGYROCTR] == 0)
+      c(RegGYROCTR)--;
+      if(c(RegGYROCTR) == 0)
         state->input_channel[014] &= ~01000;
     }
   }
@@ -2279,15 +2278,15 @@ int agc_engine(agc_state_t* state)
   // Just grab the data from the counter and dump it out the appropriate
   // fictitious port as a giant lump.
 
-  if(state->erasable[0][RegOPTX] && 0 != (state->input_channel[014] & 02000))
+  if(c(RegOPTX) && 0 != (state->input_channel[014] & 02000))
   {
-    agc_channel_output(state, 0172, state->erasable[0][RegOPTX]);
-    state->erasable[0][RegOPTX] = 0;
+    agc_channel_output(state, 0172, c(RegOPTX));
+    c(RegOPTX) = 0;
   }
-  if(state->erasable[0][RegOPTY] && 0 != (state->input_channel[014] & 04000))
+  if(c(RegOPTY) && 0 != (state->input_channel[014] & 04000))
   {
-    agc_channel_output(state, 0171, state->erasable[0][RegOPTY]);
-    state->erasable[0][RegOPTY] = 0;
+    agc_channel_output(state, 0171, c(RegOPTY));
+    c(RegOPTY) = 0;
   }
 
   //----------------------------------------------------------------------
