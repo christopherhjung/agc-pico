@@ -40,23 +40,35 @@ void dsky_output_handle()
     switch(c)
     {
       case '0':
-        dsky_keyboard_press(KEY_ZERO);
+        dsky_press_key(KEY_ZERO);
         break;
       case 'V':
       case 'v':
-        dsky_keyboard_press(KEY_VERB);
+        dsky_press_key(KEY_VERB);
         break;
       case 'N':
       case 'n':
-        dsky_keyboard_press(KEY_NOUN);
+        dsky_press_key(KEY_NOUN);
+        break;
+      case 'R':
+      case 'r':
+        dsky_press_key(KEY_RSET);
+        break;
+      case 'P':
+      case 'p':
+        dsky_press_pro(0);
+        break;
+      case 'O':
+      case 'o':
+        dsky_press_pro(1);
         break;
       case 'E':
       case '\n':
-        dsky_keyboard_press(KEY_ENTER);
+        dsky_press_key(KEY_ENTER);
         break;
       default:
         if('1' <= c && c <= '9')
-          dsky_keyboard_press(c - '1' + KEY_ONE);
+          dsky_press_key(c - '1' + KEY_ONE);
     }
   }
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef enum
@@ -19,8 +20,8 @@ typedef enum
   KEY_KEY_REL = 25,
   KEY_ENTER   = 28,
   KEY_CLR     = 30,
-  KEY_NOUN    = 31,
-} Keyboard;
+  KEY_NOUN    = 31
+} Key;
 
 typedef struct
 {
@@ -68,7 +69,8 @@ typedef struct
 void dsky_input_handle(dsky_t* dsky);
 void dsky_output_handle();
 
-void dsky_keyboard_press(Keyboard Keycode);
+void dsky_press_key(Key key);
+void dsky_press_pro(bool on);
 
 void dsky_row_init(dsky_row_t* row);
 

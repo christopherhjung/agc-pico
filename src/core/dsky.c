@@ -1,6 +1,7 @@
 #include "core/dsky.h"
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -171,10 +172,16 @@ void dsky_input_handle(dsky_t* dsky)
   }
 }
 
-void dsky_keyboard_press(Keyboard Keycode)
+void dsky_press_key(Key key)
 {
-  dsky_channel_output(015, Keycode);
+  dsky_channel_output(015, key);
 }
+
+void dsky_press_pro(bool on)
+{
+  dsky_channel_output(032, on ? 1 : 0);
+}
+
 
 int dsky_channel_input(uint16_t* channel, uint16_t* value)
 {
