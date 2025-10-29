@@ -54,6 +54,10 @@ void dsky_output_handle()
       case 'r':
         dsky_press_key(KEY_RSET);
         break;
+      case 'K':
+      case 'k':
+        dsky_press_key(KEY_KEY_REL);
+        break;
       case 'P':
       case 'p':
         dsky_press_pro(0);

@@ -179,7 +179,7 @@ void dsky_press_key(Key key)
 
 void dsky_press_pro(bool on)
 {
-  dsky_channel_output(032, on ? 1 : 0);
+  dsky_channel_output(032, on ? 020000 : 0);
 }
 
 
