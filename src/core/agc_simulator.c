@@ -52,7 +52,7 @@
 #endif
 
 /** Declare the singleton Simulator object instance */
-static sim_t Simulator;
+sim_t Simulator;
 
 static int sim_initialize_engine(void)
 {

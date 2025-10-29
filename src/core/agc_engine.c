@@ -1512,7 +1512,7 @@ static int burst_output(agc_state_t* state, int drive_bit_mask, int counter_regi
   // If so, we must retrieve the count from the counter register.
   if(drive_bit)
   {
-    drive_count         = mem0(counter_register);
+    drive_count            = mem0(counter_register);
     mem0(counter_register) = 0;
   }
   // The count may be negative.  If so, normalize to be positive and set the
@@ -1723,7 +1723,7 @@ static void simulate_dv(agc_state_t* state, uint16_t divisor)
 // fast as the regular 1600 pps counters.
 #define GYRO_OVERFLOW 160
 #define GYRO_DIVIDER (2 * 3)
-static unsigned gyro_count    = 0;
+static unsigned gyro_count     = 0;
 static unsigned old_channel_14 = 0, GyroTimer = 0;
 
 // Coarse-alignment.
@@ -1759,8 +1759,7 @@ int handle_counter_timers(agc_state_t* state)
     if(input(ChanSCALER1) == 040000)
     {
       input(ChanSCALER1) = 0;
-      input(ChanSCALER2) =
-        (input(ChanSCALER2) + 1) & 037777;
+      input(ChanSCALER2) = (input(ChanSCALER2) + 1) & 037777;
     }
 
     // Check alarms first, since there's a chance we might go to standby
@@ -1772,9 +1771,7 @@ int handle_counter_timers(agc_state_t* state)
 
       // The standby circuit finishes checking to see if we're going to standby now
       // (it has the same period as but is 180 degrees out of phase with the Night Watchman)
-      if(
-        state->sby_pressed
-        && ((input(013) & 002000) || state->standby))
+      if(state->sby_pressed && ((input(013) & 002000) || state->standby))
       {
         if(!state->standby)
         {
@@ -1833,9 +1830,7 @@ int handle_counter_timers(agc_state_t* state)
       // generated (or if the light test is active), the filter is charged. Otherwise,
       // it slowly discharges. This is being modeled as a simple linear function right now,
       // and should be updated when we learn its real implementation details.
-      if(
-        (0400 == (0777 & input(ChanSCALER1)))
-        && (state->generated_warning || (input(013) & 01000)))
+      if((0400 == (0777 & input(ChanSCALER1))) && (state->generated_warning || (input(013) & 01000)))
       {
         state->generated_warning = 0;
         state->warning_filter += WARNING_FILTER_INCREMENT;
@@ -1860,9 +1855,7 @@ int handle_counter_timers(agc_state_t* state)
         state->rupt_lock = 1;
         state->no_rupt   = 1;
       }
-      else if(
-        (state->rupt_lock || state->no_rupt)
-        && 0300 == (0777 & input(ChanSCALER1)))
+      else if((state->rupt_lock || state->no_rupt) && 0300 == (0777 & input(ChanSCALER1)))
       {
         // We've either had no interrupts, or stuck in one, for 140ms. Sound the alarm!
         if(ShowAlarms && state->rupt_lock)
@@ -1996,8 +1989,8 @@ int handle_counter_timers(agc_state_t* state)
         // The net result of those two is Z = 4000. Interrupt state is cleared, and
         // interrupts are enabled. The TC 4000 has the beneficial side-effect of
         // storing the current Z in Q, where it can helpfully be recovered.
-        mem0(RegQ)                = mem0(RegZ);
-        mem0(RegZ)                = 04000;
+        mem0(RegQ)             = mem0(RegZ);
+        mem0(RegZ)             = 04000;
         state->in_isr          = 0;
         state->allow_interrupt = 1;
         state->parity_fail     = 0;
@@ -2090,9 +2083,9 @@ void handle_gyro(agc_state_t* state)
   uint16_t i = input(014) & 01740; // Pick off the gyro bits.
   if(i != old_channel_14 || gyro_count >= 800)
   {
-    int j        = ((old_channel_14 & 0740) << 6) | gyro_count;
+    int j          = ((old_channel_14 & 0740) << 6) | gyro_count;
     old_channel_14 = i;
-    gyro_count    = 0;
+    gyro_count     = 0;
     agc_channel_output(state, 0177, j);
   }
 #else // GYRO_TIMING_SIMULATED
@@ -2112,10 +2105,10 @@ void handle_gyro(agc_state_t* state)
         gyro_count -= j;
       }
       // Set up new torque counter.
-      gyro_count                      = state->erasable[0][RegGYROCTR];
+      gyro_count                     = state->erasable[0][RegGYROCTR];
       state->erasable[0][RegGYROCTR] = 0;
-      old_channel_14 = ((input(014) & 0740) << 6);
-      GyroTimer    = GYRO_OVERFLOW * GYRO_BURST - GYRO_DIVIDER;
+      old_channel_14                 = ((input(014) & 0740) << 6);
+      GyroTimer = GYRO_OVERFLOW * GYRO_BURST - GYRO_DIVIDER;
     }
   // Update the 3200 pps gyro pulse counter.
   GyroTimer += GYRO_DIVIDER;
@@ -2491,8 +2484,8 @@ int agc_engine(agc_state_t* state)
       // Figure out where the data is stored, and fetch it.
       if(address_10 < REG16)
       {
-        ValueK  = 0177777 & mem0(address_10);
-        op_16   = overflow_corrected(ValueK);
+        ValueK     = 0177777 & mem0(address_10);
+        op_16      = overflow_corrected(ValueK);
         mem0(RegA) = odabs(ValueK);
       }
       else // K!=accumulator.
@@ -2551,7 +2544,7 @@ int agc_engine(agc_state_t* state)
             Msw = add_sp_16(Msw, AGC_P1);
           else if((0140000 & Lsw) == 0100000)
             Msw = add_sp_16(Msw, sign_extend(AGC_M1));
-          Lsw     = overflow_corrected(Lsw);
+          Lsw        = overflow_corrected(Lsw);
           mem0(RegA) = 0177777 & Msw;
           mem0(RegL) = 0177777 & sign_extend(Lsw);
           break;
@@ -2599,7 +2592,7 @@ int agc_engine(agc_state_t* state)
         mem0(RegL) = AGC_P0;
       else if(address_10 < REG16)
       {
-        op_16   = mem0(RegL);
+        op_16      = mem0(RegL);
         mem0(RegL) = mem0(address_10);
         if(address_10 >= 020 && address_10 <= 023)
           assign_from_pointer(
@@ -2671,7 +2664,7 @@ int agc_engine(agc_state_t* state)
         break;
       }
       where_word = find_memory_word(state, address_12);
-      mem0(RegA)    = sign_extend(*where_word);
+      mem0(RegA) = sign_extend(*where_word);
       assign_from_pointer(state, where_word, *where_word);
       break;
     case 040: // CS
@@ -2695,7 +2688,7 @@ int agc_engine(agc_state_t* state)
         break;
       }
       where_word = find_memory_word(state, address_12);
-      mem0(RegA)    = sign_extend(neg_sp(*where_word));
+      mem0(RegA) = sign_extend(neg_sp(*where_word));
       assign_from_pointer(state, where_word, *where_word);
       break;
     case 050: // INDEX
@@ -2751,7 +2744,7 @@ int agc_engine(agc_state_t* state)
       // Topmost word.
       if(address_10 < REG16)
       {
-        op_16         = mem0(address_10);
+        op_16            = mem0(address_10);
         mem0(address_10) = mem0(RegL);
         mem0(RegL)       = op_16;
         if(address_10 == RegZ)
@@ -2767,7 +2760,7 @@ int agc_engine(agc_state_t* state)
       // Bottom word.
       if(address_10 < REG16 + 1)
       {
-        op_16             = mem0(address_10 - 1);
+        op_16                = mem0(address_10 - 1);
         mem0(address_10 - 1) = mem0(RegA);
         mem0(RegA)           = op_16;
         if(address_10 == RegZ + 1)
@@ -2776,7 +2769,8 @@ int agc_engine(agc_state_t* state)
       else
       {
         op_16 = sign_extend(where_word[-1]);
-        assign_from_pointer(state, where_word - 1, overflow_corrected(mem0(RegA)));
+        assign_from_pointer(
+          state, where_word - 1, overflow_corrected(mem0(RegA)));
         mem0(RegA) = op_16;
       }
       break;
@@ -2822,7 +2816,7 @@ int agc_engine(agc_state_t* state)
         break;
       }
       where_word = find_memory_word(state, address_10);
-      mem0(RegA)    = sign_extend(*where_word);
+      mem0(RegA) = sign_extend(*where_word);
       assign_from_pointer(state, where_word, overflow_corrected(acc));
       break;
     case 060: // AD
@@ -2857,9 +2851,9 @@ int agc_engine(agc_state_t* state)
         mem0(RegA) = acc & mem0(address_12);
       else
       {
-        mem0(RegA)    = overflow_corrected(acc);
+        mem0(RegA) = overflow_corrected(acc);
         where_word = find_memory_word(state, address_12);
-        mem0(RegA)    = sign_extend(mem0(RegA) & *where_word);
+        mem0(RegA) = sign_extend(mem0(RegA) & *where_word);
       }
       break;
     case 0100: // READ
@@ -3031,11 +3025,11 @@ int agc_engine(agc_state_t* state)
         // and then convert back afterward.  Incidentally, we know we
         // aren't dividing by zero, since we know that the divisor is
         // greater (in magnitude) than the dividend.
-        Dividend  = agc2cpu2(Dividend);
-        Divisor   = agc2cpu(overflow_corrected(Div16));
-        Quotient  = Dividend / Divisor;
-        Remainder = Dividend % Divisor;
-        mem0(RegA)   = sign_extend(cpu2agc(Quotient));
+        Dividend   = agc2cpu2(Dividend);
+        Divisor    = agc2cpu(overflow_corrected(Div16));
+        Quotient   = Dividend / Divisor;
+        Remainder  = Dividend % Divisor;
+        mem0(RegA) = sign_extend(cpu2agc(Quotient));
         if(Remainder == 0)
         {
           // In this case, we need to make an extra effort, because we
@@ -3092,7 +3086,7 @@ int agc_engine(agc_state_t* state)
         mem0(RegA) = 0177777 & diff;
       else
       {
-        op_16   = (077777 & diff);
+        op_16      = (077777 & diff);
         mem0(RegA) = sign_extend(op_16);
       }
       if(address_10 >= 020 && address_10 <= 023)
@@ -3107,7 +3101,7 @@ int agc_engine(agc_state_t* state)
         mem0(RegQ) = AGC_P0;
       else if(address_10 < REG16)
       {
-        op_16         = mem0(RegQ);
+        op_16            = mem0(RegQ);
         mem0(RegQ)       = mem0(address_10);
         mem0(address_10) = op_16;
         if(address_10 == RegZ)
@@ -3117,7 +3111,7 @@ int agc_engine(agc_state_t* state)
       {
         where_word = find_memory_word(state, address_10);
         op_16      = overflow_corrected(mem0(RegQ));
-        mem0(RegQ)    = sign_extend(*where_word);
+        mem0(RegQ) = sign_extend(*where_word);
         assign_from_pointer(state, where_word, op_16);
       }
       break;
@@ -3319,9 +3313,9 @@ AllDone:
   // All done!
   if(!state->pend_flag)
   {
-    mem0(RegZERO)              = AGC_P0;
-    input(7) = state->output_channel_7 &= 0160;
-    mem0(RegZ)                 = state->next_z;
+    mem0(RegZERO) = AGC_P0;
+    input(7)      = state->output_channel_7 &= 0160;
+    mem0(RegZ)    = state->next_z;
     // In all cases except for RESUME, Z will be truncated to
     // 12 bits between instructions
     if(!state->substitute_instruction)

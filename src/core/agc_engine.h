@@ -370,7 +370,5 @@ void unprogrammed_increment(agc_state_t* state, int counter, int inc_type);
 // API for yaAGC-to-peripheral communications.
 void agc_channel_output(agc_state_t* state, int channel, int value);
 int  agc_channel_input(agc_state_t* state);
-int  dsky_channel_input(int* channel, int* value);
-int  dsky_channel_output(int channel, int value);
 void channel_routine(agc_state_t* state);
 void request_radar_data(agc_state_t* state);

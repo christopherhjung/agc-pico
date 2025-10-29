@@ -15,7 +15,7 @@ set(VAGC_src
 )
 
 add_executable(agc ${VAGC_src})
-target_compile_definitions(agc PRIVATE NVER="${NVER}" NOREADLINE="yes" -DGYRO_TIMING_SIMULATED)
+target_compile_definitions(agc PRIVATE NVER="${NVER}" NOREADLINE="yes" )
 target_link_libraries(agc PRIVATE m)
 target_include_directories(agc PRIVATE src)
 

@@ -83,3 +83,6 @@ void dsky_row_print(dsky_row_t* row);
 void dsky_two_print(dsky_two_t* two);
 
 void dsky_print(dsky_t* dsky);
+
+int  dsky_channel_input(uint16_t* channel, uint16_t* value);
+int  dsky_channel_output(uint16_t channel, uint16_t value);

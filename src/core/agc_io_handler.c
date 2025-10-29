@@ -132,7 +132,7 @@ int agc_channel_input(agc_state_t* state)
     // UPRUPT interrupt request should be set.
     else if(packet.channel == 0173)
     {
-      mem0(RegINLINK)                 = (packet.value & 077777);
+      mem0(RegINLINK)              = (packet.value & 077777);
       state->interrupt_requests[7] = 1;
     }
     // Fictitious registers for rotational hand controller (RHC).
