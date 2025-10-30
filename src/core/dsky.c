@@ -8,6 +8,16 @@
 #include "agc_engine.h"
 #include "agc_simulator.h"
 #include "core/ringbuffer.h"
+#include "profile.h"
+
+#include <sys/time.h>
+
+long long current_time_millis() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return (long long)(tv.tv_sec) * 1000 + (tv.tv_usec) / 1000;
+}
+
 
 double imu_angle[3] = {0};
 double pimu[3]      = {0};
@@ -34,7 +44,7 @@ void modify_gimbal_angle(uint16_t axis, double delta)
 
   // ---- Feed yaAGC with the new Angular Delta ----
   double sign = dx > 0 ? +1 : -1;
-  double n    = floor(fabs(dx) / ANGLE_INCR);
+  uint16_t n    = floor(fabs(dx) / ANGLE_INCR);
   pimu[axis] = adjust(pimu[axis] + sign * ANGLE_INCR * n, 0, 2 * M_PI);
 
   uint16_t cdu = Simulator.state.erasable[0][26 + axis]; // read CDU counter (26 = 0x32 = CDUX)
@@ -97,11 +107,11 @@ void rotate(double delta[3])
   //--- Rad to Deg and call of Gimbal Angle Modification ----
   modify_gimbal_angle(0, do_b);
   modify_gimbal_angle(1, di_b);
-  modify_gimbal_angle(3, dm_b);
+  modify_gimbal_angle(2, dm_b);
 }
 
 double velocity[3] = {0};
-double pipa[3]     = {0};
+int64_t pipa[3]     = {0};
 //************************************************************************************************
 //*** Function: Modify PIPA Values to match simulated Speed                                   ****
 //************************************************************************************************
@@ -126,19 +136,83 @@ void accelerate(double delta[3])
   for(int axis = 0; axis < 3; axis++)
   {
     velocity[axis] += dv[axis];
-    uint16_t counts = floor((velocity[axis] - pipa[axis] * PIPA_INCR) / PIPA_INCR);
+    int16_t counts = floor((velocity[axis] - pipa[axis] * PIPA_INCR) / PIPA_INCR);
 
     pipa[axis] += counts;
 
-    uint16_t p = Simulator.state.erasable[0][31 + axis]; // read PIPA counter (31 = 0x37 = PIPAX)
+    int16_t p = Simulator.state.erasable[0][31 + axis]; // read PIPA counter (31 = 0x37 = PIPAX)
     p     = p & 0x4000 ? -(p ^ 0x7FFF) : p; // converts from ones-complement to twos-complement
     p += counts; // adds the number of pulses
     Simulator.state.erasable[0][31 + axis] = p < 0 ? (-p) ^ 0x7FFF : p;
   }
 }
 
+bool is_init = false;
+bool started = false;
+
+uint64_t init_time = 0;
+uint64_t start_time = 0;
+uint64_t next_flight_update = 0;
+uint64_t current_time = 0;
+uint64_t real_start_time = 0;
+uint64_t real_current_time = 0;
+
+uint16_t last_time = 0;
+
 void dsky_input_handle(dsky_t* dsky)
 {
+  if(dsky->prog.first == 0 && dsky->prog.second == 2)
+  {
+    uint16_t mem_time = Simulator.state.erasable[0][RegTIME5];
+
+    if(is_init == 0){
+      is_init = true;
+      init_time = mem_time;
+    }else if(mem_time - init_time >= 300 && !started){
+      dsky_channel_output(24, 0);
+      started = true;
+      start_time = mem_time;
+      next_flight_update = mem_time;
+      last_time = mem_time;
+      current_time = mem_time;
+      real_start_time = current_time_millis();
+    }
+  }
+
+  if(dsky->prog.first == 1 && dsky->prog.second == 1)
+  {
+    uint16_t mem_time = Simulator.state.erasable[0][RegTIME5];
+    uint16_t offset_time = mem_time >= last_time
+            ? mem_time - last_time
+            : 0x3FFF + (mem_time - last_time);
+
+    last_time = mem_time;
+    current_time += offset_time;
+    real_current_time = current_time_millis();
+
+    if(next_flight_update <= current_time)
+    {
+      uint64_t flight_time = current_time - start_time;
+
+      row_t data = profile_get_data(flight_time / 100);
+      double accel[3] = {
+        1.08 * data.third,
+        0.0,
+        0.0
+      };
+
+      double rot[3] = {
+        data.second/10*DEG_TO_RAD,
+        data.fourth/10*DEG_TO_RAD,
+        0.0
+      };
+
+      accelerate(accel);
+      rotate(rot);
+      next_flight_update = current_time + 10;
+    }
+  }
+
   uint16_t channel;
   uint16_t value;
   while(dsky_channel_input(&channel, &value))
@@ -345,4 +419,5 @@ void dsky_print(dsky_t* dsky)
   dsky_row_print(&dsky->rows[0]);
   dsky_row_print(&dsky->rows[1]);
   dsky_row_print(&dsky->rows[2]);
+  printf("%llu - %llu\n", current_time - start_time, real_current_time - real_start_time);
 }

@@ -118,8 +118,15 @@ int agc_channel_input(agc_state_t* state)
       return 1;
     }
 
+    uint16_t mask = 077777;
+    if(packet.channel == 24)
+    {
+      mask = 0x0010;
+    }
+
     // Mask out irrelevant bits, set current bits, and write to CPU.
-    packet.value |= read_io(state, packet.channel) & ~077777;
+    packet.value &= mask;
+    packet.value |= read_io(state, packet.channel) & ~mask;
     write_io(state, packet.channel, packet.value);
 
     // If this is a keystroke from the DSKY, generate an interrupt req.

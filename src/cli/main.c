@@ -48,6 +48,7 @@
 #include <termios.h>
 
 #include "agc_cli.h"
+#include "core/profile.h"
 
 // Set terminal to raw mode (no buffering, no enter needed)
 void set_conio_terminal_mode()
@@ -75,6 +76,8 @@ Simulator is initialized and subsequently executed.
 int main(int argc, char* argv[])
 {
   set_conio_terminal_mode();
+
+  profile_load_file();
 
   /* Declare Options and parse the command line */
   opt_t* opt = cli_parse_args(argc, argv);

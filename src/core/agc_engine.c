@@ -1159,20 +1159,19 @@ int counter_mcdu(int16_t* counter)
 // Diminish increment.
 int counter_dinc(agc_state_t* state, int counter_num, int16_t* counter)
 {
-  int     RetVal = 0;
-  int16_t i;
-  i = *counter;
-  if(i == AGC_P0 || i == AGC_M0) // Zero?
+  int     ret = 0;
+  int16_t current = *counter;
+  if(current == AGC_P0 || current == AGC_M0) // Zero?
   {
     // Emit a ZOUT.
     if(counter_num != 0)
       agc_channel_output(state, 0x80 | counter_num, 017);
 
-    RetVal = 1;
+    ret = 1;
   }
-  else if(040000 & i) // Negative?
+  else if(040000 & current) // Negative?
   {
-    i = add_sp_16(sign_extend(i), sign_extend(AGC_P1)) & 077777;
+    current = add_sp_16(sign_extend(current), sign_extend(AGC_P1)) & 077777;
 
     // Emit a MOUT.
     if(counter_num != 0)
@@ -1180,16 +1179,15 @@ int counter_dinc(agc_state_t* state, int counter_num, int16_t* counter)
   }
   else // Positive?
   {
-    i = add_sp_16(sign_extend(i), sign_extend(AGC_M1)) & 077777;
+    current = add_sp_16(sign_extend(current), sign_extend(AGC_M1)) & 077777;
 
     // Emit a POUT.
     if(counter_num != 0)
       agc_channel_output(state, 0x80 | counter_num, 015);
   }
 
-  *counter = i;
-
-  return (RetVal);
+  *counter = current;
+  return (ret);
 }
 
 // Left-shift increment.
@@ -1724,7 +1722,7 @@ static void simulate_dv(agc_state_t* state, uint16_t divisor)
 #define GYRO_OVERFLOW 160
 #define GYRO_DIVIDER (2 * 3)
 static unsigned gyro_count     = 0;
-static unsigned old_channel_14 = 0, GyroTimer = 0;
+static unsigned old_channel_14 = 0, gyro_timer = 0;
 
 // Coarse-alignment.
 // The IMU CDU drive emits bursts every 600 ms.  Each cycle is
@@ -2063,10 +2061,10 @@ void handle_gyro(agc_state_t* state)
 
 #ifdef GYRO_TIMING_SIMULATED
   // Update the 3200 pps gyro pulse counter.
-  GyroTimer += GYRO_DIVIDER;
-  while(GyroTimer >= GYRO_OVERFLOW)
+  gyro_timer += GYRO_DIVIDER;
+  while(gyro_timer >= GYRO_OVERFLOW)
   {
-    GyroTimer -= GYRO_OVERFLOW;
+    gyro_timer -= GYRO_OVERFLOW;
     // We get to this point 3200 times per second.  We increment the
     // pulse count only if the GYRO ACTIVITY bit in channel 014 is set.
     if(0 != (input(014) & 01000) && mem0(RegGYROCTR) > 0)
@@ -2108,13 +2106,13 @@ void handle_gyro(agc_state_t* state)
       gyro_count                     = state->erasable[0][RegGYROCTR];
       state->erasable[0][RegGYROCTR] = 0;
       old_channel_14                 = ((input(014) & 0740) << 6);
-      GyroTimer = GYRO_OVERFLOW * GYRO_BURST - GYRO_DIVIDER;
+      gyro_timer = GYRO_OVERFLOW * GYRO_BURST - GYRO_DIVIDER;
     }
   // Update the 3200 pps gyro pulse counter.
-  GyroTimer += GYRO_DIVIDER;
-  while(GyroTimer >= GYRO_BURST * GYRO_OVERFLOW)
+  gyro_timer += GYRO_DIVIDER;
+  while(gyro_timer >= GYRO_BURST * GYRO_OVERFLOW)
   {
-    GyroTimer -= GYRO_BURST * GYRO_OVERFLOW;
+    gyro_timer -= GYRO_BURST * GYRO_OVERFLOW;
     if(gyro_count)
     {
       int j = gyro_count;

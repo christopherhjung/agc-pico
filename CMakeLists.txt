@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(VAGC)
 
+find_package(cJSON REQUIRED)
+
 set(VAGC_src
   src/cli/main.c
   src/cli/dsky_output_handler.c
@@ -12,11 +14,13 @@ set(VAGC_src
   src/core/agc_io_handler.c
   src/core/ringbuffer.c
   src/core/dsky.c
+  src/core/profile.c
 )
 
 add_executable(agc ${VAGC_src})
-target_compile_definitions(agc PRIVATE NVER="${NVER}" NOREADLINE="yes" )
-target_link_libraries(agc PRIVATE m)
+target_compile_definitions(agc PRIVATE NVER="${NVER}" NOREADLINE="yes" -DGYRO_TIMING_SIMULATED=)
+target_link_libraries(agc PRIVATE m cjson)
+target_include_directories(agc PRIVATE ${CJSON_INCLUDE_DIRS})
 target_include_directories(agc PRIVATE src)
 
 install(TARGETS agc)
