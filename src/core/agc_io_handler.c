@@ -44,7 +44,7 @@
 */
 
 #include "agc_engine.h"
-#include "core/agc.h"
+#include <core/agc.h>
 #include "ringbuffer.h"
 
 int16_t last_rhc_pitch = 0;

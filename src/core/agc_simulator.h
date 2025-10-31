@@ -110,6 +110,6 @@ typedef struct
 extern sim_t Simulator;
 
 extern void sim_set_cycle_count(int Mode);
-extern int  sim_init(opt_t* Options);
+extern int  sim_init(opt_t* opt);
 extern void sim_exec(void);
 extern void sim_time_update(void);

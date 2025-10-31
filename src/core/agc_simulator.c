@@ -37,12 +37,12 @@
                 09/30/16 MAS    Added the InhibitAlarms option.
  */
 
-#include "core/agc_simulator.h"
+#include <core/agc_simulator.h>
 
 #include <assert.h>
 
 #include "agc_engine.h"
-#include "core/dsky.h"
+#include <core/dsky.h>
 
 #ifdef PLATFORMIO
 #include <Arduino.h>
@@ -131,22 +131,22 @@ static void sim_exec_engine()
 Initialize the AGC Simulator; this means setting up the debugger, AGC
 engine and initializing the simulator time parameters.
 */
-int sim_init(opt_t* Options)
+int sim_init(opt_t* opt)
 {
   int result = 0;
 
   /* Without Options we can't Run */
-  if(!Options)
+  if(!opt)
     return (6);
 
   /* Set the basic simulator variables */
-  Simulator.opt           = Options;
-  Simulator.dump_interval = Options->dump_time * sysconf(_SC_CLK_TCK);
+  Simulator.opt           = opt;
+  Simulator.dump_interval = opt->dump_time * sysconf(_SC_CLK_TCK);
 
   /* Set legacy Option variables */
-  DebugDsky     = Options->debug_dsky;
-  InhibitAlarms = Options->inhibit_alarms;
-  ShowAlarms    = Options->show_alarms;
+  DebugDsky     = opt->debug_dsky;
+  InhibitAlarms = opt->inhibit_alarms;
+  ShowAlarms    = opt->show_alarms;
   /* If we are not in quiet mode display the version info */
 
   /* Initialize the AGC Engine */
@@ -160,7 +160,7 @@ int sim_init(opt_t* Options)
     (Simulator.cycle_dump + AGC_PER_SECOND / 2) / AGC_PER_SECOND;
   Simulator.last_real_time = ~((clock_t)0);
 
-  return (result | Options->version);
+  return (result | opt->version);
 }
 
 /**
@@ -181,6 +181,10 @@ void sim_set_cycle_count(int Mode)
   }
 }
 
+#ifdef PICO_BOARD
+#include "pico/stdlib.h"
+#endif
+
 /**
 This function puts the simulator in a sleep state to reduce
 CPU usage on the PC.
@@ -189,8 +193,8 @@ static void sim_sleep(void)
 {
 #ifdef WIN32
   Sleep(10);
-#elif defined(PLATFORMIO)
-  delayMicroseconds(10000);
+#elif PICO_BOARD
+  sleep_ms(10);
 #else
   struct timespec req, rem;
   req.tv_sec  = 0;

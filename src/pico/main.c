@@ -45,6 +45,9 @@
 */
 
 #include <core/agc_simulator.h>
+#include "pico/stdlib.h"
+
+const char *data_b64 =  (const char *)0x10200000;
 
 /**
 The AGC main function from here the Command Line is parsed, the
@@ -52,6 +55,8 @@ Simulator is initialized and subsequently executed.
 */
 int main(int argc, char* argv[])
 {
+  stdio_init_all();  // Initialize USB or UART serial I/O
+
   /* Declare Options and parse the command line */
   opt_t opt;
 

@@ -438,7 +438,7 @@
 
 //#include <errno.h>
 //#include <stdlib.h>
-#include "core/agc_engine.h"
+#include <core/agc_engine.h>
 
 #include <stdio.h>
 
@@ -527,6 +527,8 @@ int DebugDsky     = 0;
 int InhibitAlarms = 0;
 int ShowAlarms    = 0;
 int NumDebugRules = 0;
+int CmOrLm = 0;
+
 
 //-----------------------------------------------------------------------------
 // Functions for reading or writing from/to i/o channels.  The reason we have
@@ -706,10 +708,10 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
   if(state->check_parity)
   {
     // Check parity for fixed memory if such checking is enabled
-    uint16_t LinearAddr = adj_fb * 02000 + (addr_12 & 01777);
-    int16_t  ExpectedParity =
-      (state->parities[LinearAddr / 32] >> (LinearAddr % 32)) & 1;
-    int16_t word = ((*addr) << 1) | ExpectedParity;
+    uint16_t linear_addr = adj_fb * 02000 + (addr_12 & 01777);
+    int16_t  expected_parity =
+      (state->parities[linear_addr / 32] >> (linear_addr % 32)) & 1;
+    int16_t word = ((*addr) << 1) | expected_parity;
     word ^= (word >> 8);
     word ^= (word >> 4);
     word ^= (word >> 2);

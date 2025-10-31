@@ -69,6 +69,11 @@ void reset_terminal_mode()
   tcsetattr(0, TCSANOW, &term);
 }
 
+typedef struct {
+  unsigned int parity : 1;
+  unsigned int value : 15;
+}intagc_t;
+
 /**
 The AGC main function from here the Command Line is parsed, the
 Simulator is initialized and subsequently executed.

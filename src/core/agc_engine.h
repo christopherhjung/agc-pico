@@ -351,7 +351,7 @@ extern int InhibitAlarms;
 extern int ShowAlarms;
 extern int NumDebugRules;
 
-int CmOrLm;
+extern int CmOrLm;
 
 //---------------------------------------------------------------------------
 // Function prototypes.

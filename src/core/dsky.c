@@ -1,4 +1,4 @@
-#include "core/dsky.h"
+#include <core/dsky.h>
 
 #include <math.h>
 #include <stdbool.h>
@@ -7,7 +7,7 @@
 
 #include "agc_engine.h"
 #include "agc_simulator.h"
-#include "core/ringbuffer.h"
+#include <core/ringbuffer.h>
 #include "profile.h"
 
 #include <sys/time.h>
