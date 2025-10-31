@@ -45,7 +45,9 @@
 */
 
 #include <core/agc_simulator.h>
+#include <sys/fcntl.h>
 #include <termios.h>
+#include <unistd.h>
 
 #include "agc_cli.h"
 #include "core/profile.h"
@@ -90,6 +92,19 @@ Simulator is initialized and subsequently executed.
 int main(int argc, char* argv[])
 {
   set_conio_terminal_mode();
+
+
+  struct termios oldt, newt;
+  int            ch;
+  int            oldf;
+
+  tcgetattr(STDIN_FILENO, &oldt);
+  newt = oldt;
+  newt.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
 
 
   const char *filename = "resources/profile.json";

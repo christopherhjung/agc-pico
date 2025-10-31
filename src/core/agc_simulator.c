@@ -224,10 +224,6 @@ static void sim_manage_time(void)
     Simulator.desired_cycles -= Simulator.real_time_offset;
     Simulator.desired_cycles *= AGC_PER_SECOND;
   }
-  else
-  {
-    sim_sleep();
-  }
 }
 
 /**
@@ -267,7 +263,7 @@ void sim_exec(void)
       dsky_output_handle();
 
       /* Adjust the CycleCount */
-      //sim_set_cycle_count(SIM_CYCLECOUNT_INC);
+    //  sim_set_cycle_count(SIM_CYCLECOUNT_INC);
     //}
   }
 }

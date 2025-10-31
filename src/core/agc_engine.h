@@ -348,7 +348,6 @@ typedef struct
 
 extern int InhibitAlarms;
 extern int ShowAlarms;
-extern int NumDebugRules;
 
 extern int CmOrLm;
 

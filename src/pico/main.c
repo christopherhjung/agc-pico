@@ -47,6 +47,8 @@
 #include <core/agc_simulator.h>
 
 #include "core/profile.h"
+#include "hardware/clocks.h"
+#include "hardware/vreg.h"
 #include "pico/stdlib.h"
 
 
@@ -63,13 +65,12 @@ int main(int argc, char* argv[])
 {
   stdio_init_all();  // Initialize USB or UART serial I/O
 
+  vreg_set_voltage(VREG_VOLTAGE_1_25);
+  set_sys_clock_khz(360000, true);
+
   //profile_load_file(profile, 25383);
   /* Declare Options and parse the command line */
   opt_t opt = {0};
-
-  /* Initialize the Simulator and debugger if enabled
-	 * if the initialization fails or Options is NULL then the simulator will
-	 * return a non zero value and subsequently bail and exit the program */
 
   agc_load_rom(&Simulator.state, rom, 73728);
   sim_init(&opt);

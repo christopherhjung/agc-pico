@@ -192,7 +192,6 @@ int CliParseCfg(char* Filename)
           continue;
         if(KeyCode < 0 || KeyCode > 31)
           continue;
-        NumDebugRules++;
       }
       else if(!strcmp(s, "LMSIM"))
         CmOrLm = 0;

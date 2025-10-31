@@ -510,9 +510,6 @@ static const int ExtracodeTiming[32] = {
   2, 2, 2, 2  // Opcode = 017.
 };
 
-// For debugging the CDUX,Y,Z inputs.
-FILE* CduLog = NULL;
-
 //-----------------------------------------------------------------------------
 // DSKY handling constants and variables.
 #define DSKY_OVERFLOW 81920
@@ -525,9 +522,7 @@ FILE* CduLog = NULL;
 
 int InhibitAlarms = 0;
 int ShowAlarms    = 0;
-int NumDebugRules = 0;
 int CmOrLm = 0;
-
 
 //-----------------------------------------------------------------------------
 // Functions for reading or writing from/to i/o channels.  The reason we have
@@ -659,8 +654,6 @@ void cpu_write_io(agc_state_t* state, int addr, int val)
 static int16_t* find_memory_word(agc_state_t* state, int addr_12)
 {
   //int PseudoAddress;
-  int      adj_eb, adj_fb;
-  int16_t* addr;
 
   // Get rid of the parity bit.
   //Address12 = Address12;
@@ -678,19 +671,22 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
   // It should be noted as far as unswitched-erasable and common-fixed memory
   // is concerned, that the following rules actually do result in continuous
   // block of memory that don't have problems in crossing bank boundaries.
+  int      adj_eb;
   if(addr_12 < 00400) // Unswitched-erasable.
     return &mem0(addr_12 & 00377);
-  else if(addr_12 < 01000) // Unswitched-erasable (continued).
+  if(addr_12 < 01000) // Unswitched-erasable (continued).
     return &state->erasable[1][addr_12 & 00377];
-  else if(addr_12 < 01400) // Unswitched-erasable (continued).
+  if(addr_12 < 01400) // Unswitched-erasable (continued).
     return &state->erasable[2][addr_12 & 00377];
-  else if(addr_12 < 02000) // Switched-erasable.
+  if(addr_12 < 02000) // Switched-erasable.
   {
     // Recall that the parity bit is accounted for in the shift below.
     adj_eb = (7 & (mem0(RegEB) >> 8));
     return (&state->erasable[adj_eb][addr_12 & 00377]);
   }
-  else if(addr_12 < 04000) // Fixed-switchable.
+
+  int adj_fb;
+  if(addr_12 < 04000) // Fixed-switchable.
   {
     adj_fb = (037 & (mem0(RegFB) >> 10));
     // Account for the superbank bit.
@@ -702,7 +698,7 @@ static int16_t* find_memory_word(agc_state_t* state, int addr_12)
   else // Fixed-fixed (continued).
     adj_fb = 3;
 
-  addr = (&state->fixed[adj_fb][addr_12 & 01777]);
+  int16_t* addr = (&state->fixed[adj_fb][addr_12 & 01777]);
 
   if(state->check_parity)
   {
@@ -1266,7 +1262,7 @@ static void interrupt_requests(agc_state_t* state, int16_t address_10, int sum)
 
 typedef struct
 {
-  int      ptr;           // Index of next entry being pulled.
+  int      idx;           // Index of next entry being pulled.
   int      size;          // Number of entries.
   int      interval_type; // 0,1,2,0,1,2,...
   uint64_t next_update; // Cycle count at which next counter update occurs.
@@ -1314,13 +1310,11 @@ static void push_cdu_fifo(agc_state_t* state, int counter, int inc_type)
     default:
       return;
   }
-  if(CduLog != NULL)
-    fprintf(CduLog, "< " FORMAT_64U " %o %02o\n", state->cycle_counter, counter, inc_type);
   cdu_fifo_t* cdu_fifo = &CduFifos[counter - FIRST_CDU];
   // It's a little easier if the FIFO is completely empty.
   if(cdu_fifo->size == 0)
   {
-    cdu_fifo->ptr           = 0;
+    cdu_fifo->idx           = 0;
     cdu_fifo->size          = 1;
     cdu_fifo->counts[0]     = base + 1;
     cdu_fifo->next_update   = state->cycle_counter + interval;
@@ -1328,7 +1322,7 @@ static void push_cdu_fifo(agc_state_t* state, int counter, int inc_type)
     return;
   }
   // Not empty, so find the last entry in the FIFO.
-  int32_t next = cdu_fifo->ptr + cdu_fifo->size - 1;
+  int32_t next = cdu_fifo->idx + cdu_fifo->size - 1;
   if(next >= MAX_CDU_FIFO_ENTRIES)
     next -= MAX_CDU_FIFO_ENTRIES;
   // Last entry has different sign from the new data?
@@ -1362,43 +1356,31 @@ static void push_cdu_fifo(agc_state_t* state, int counter, int inc_type)
 // counter was updated, non-zero if a counter was updated.
 static int sdu_fifo(agc_state_t* state)
 {
-  int         count, ret = 0, high_rate, down_count;
-  cdu_fifo_t* cdu_fifo;
-  int16_t*    ch;
+  int         ret = 0;
   // See if there are any pending PCDU or MCDU counts we need to apply.  We only
   // check one of the CDUs, and the CDU to check is indicated by CduChecker.
-  cdu_fifo = &CduFifos[CduChecker];
+  cdu_fifo_t* cdu_fifo = &CduFifos[CduChecker];
 
   if(cdu_fifo->size > 0 && state->cycle_counter >= cdu_fifo->next_update)
   {
     // Update the counter.
-    ch         = &mem0(CduChecker + FIRST_CDU);
-    count      = cdu_fifo->counts[cdu_fifo->ptr];
-    high_rate  = (count & 0x80000000);
-    down_count = (count & 0x40000000);
+    int16_t* ch = &mem0(CduChecker + FIRST_CDU);
+    int count       = cdu_fifo->counts[cdu_fifo->idx];
+    int high_rate   = (count & 0x80000000);
+    int down_count  = (count & 0x40000000);
     if(down_count)
-    {
       counter_mcdu(ch);
-      if(CduLog != NULL)
-        fprintf(CduLog, ">\t\t" FORMAT_64U " %o 03\n", state->cycle_counter, CduChecker + FIRST_CDU);
-    }
     else
-    {
       counter_pcdu(ch);
-      if(CduLog != NULL)
-        fprintf(CduLog, ">\t\t" FORMAT_64U " %o 01\n", state->cycle_counter, CduChecker + FIRST_CDU);
-    }
     count--;
     // Update the FIFO.
     if(0 != (count & ~0xC0000000))
-      cdu_fifo->counts[cdu_fifo->ptr] = count;
+      cdu_fifo->counts[cdu_fifo->idx] = count;
     else
     {
       // That FIFO entry is exhausted.  Remove it from the FIFO.
       cdu_fifo->size--;
-      cdu_fifo->ptr++;
-      if(cdu_fifo->ptr >= MAX_CDU_FIFO_ENTRIES)
-        cdu_fifo->ptr = 0;
+      cdu_fifo->idx = (cdu_fifo->idx + 1) % MAX_CDU_FIFO_ENTRIES;
     }
     // And set next update time.
     // Set up for next update time.  The intervals is are of the form
@@ -1428,10 +1410,7 @@ static int sdu_fifo(agc_state_t* state)
     ret = 1;
   }
 
-  CduChecker++;
-  if(CduChecker >= NUM_CDU_FIFOS)
-    CduChecker = 0;
-
+  CduChecker = (CduChecker + 1) % NUM_CDU_FIFOS;
   return (ret);
 }
 

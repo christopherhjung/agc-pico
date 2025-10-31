@@ -26,7 +26,7 @@ long pico_sysconf(int name) {
         case _SC_CLK_TCK:
             // Return clock ticks per second
             // On Pico, we use microsecond resolution
-            return 150000000; // 1 MHz (1 tick per microsecond)
+            return clock_get_hz(clk_sys);
 
         case _SC_PAGESIZE:
             // Return typical page size
@@ -69,15 +69,12 @@ clock_t pico_times(struct tms *buf) {
         return (clock_t)-1;
     }
 
-    ensure_timing_init();
-
     // Get current time in microseconds
     uint64_t current_time_us = time_us_64();
-    uint64_t elapsed_us = current_time_us - start_time_us;
 
     // On a bare-metal system, all time is "user" time
     // We don't have system vs user time distinction
-    buf->tms_utime = (clock_t)elapsed_us;
+    buf->tms_utime = (clock_t)current_time_us;
     buf->tms_stime = 0;  // No system time in bare-metal
 
     // No child processes in bare-metal environment
@@ -85,23 +82,7 @@ clock_t pico_times(struct tms *buf) {
     buf->tms_cstime = 0;
 
     // Return total clock ticks since start
-    return (clock_t)elapsed_us;
+    return (clock_t)current_time_us;
 }
 
-// Optional: Reset timing base (useful for testing or restarting measurements)
-void pico_times_reset(void) {
-    start_time_us = time_us_64();
-    timing_initialized = true;
-}
-
-// Optional: Get high-resolution time in microseconds
-uint64_t pico_get_time_us(void) {
-    ensure_timing_init();
-    return time_us_64() - start_time_us;
-}
-
-// Optional: Get CPU frequency
-uint32_t pico_get_cpu_freq_hz(void) {
-    return clock_get_hz(clk_sys);
-}
 
