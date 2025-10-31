@@ -122,7 +122,7 @@ int initializeSunburst37 = 0;
 // If AllOrErasable == 0, then only the erasable memory is initialized from the
 // core-dump file.
 
-int agc_load_binfile(agc_state_t* state, const char* RomImage)
+int agc_load_rom(agc_state_t* state, const char* image)
 
 {
   FILE* fp = NULL;
@@ -133,7 +133,7 @@ int agc_load_binfile(agc_state_t* state, const char* RomImage)
   // The following sequence of steps loads the ROM image into the simulated
   // core memory, in what I think is a pretty obvious way.
 
-  fp = fopen(RomImage, "rb");
+  fp = fopen(image, "rb");
   if(fp == NULL)
   {
     RetVal = 1;
@@ -219,19 +219,11 @@ Done:
   return (RetVal);
 }
 
-int agc_engine_init(agc_state_t* state, const char* rom_image, const char* core_dump, int all_or_erasable)
+int agc_engine_init(agc_state_t* state, const char* core_dump, int all_or_erasable)
 {
   uint64_t lli;
   int      ret = 0, i, j, Bank;
   FILE*    cd  = NULL;
-
-  // Fix for Issue #29 Return the values as the API documents
-  if(rom_image)
-  {
-    ret = agc_load_binfile(state, rom_image);
-    if(ret > 0)
-      goto Done;
-  }
 
   // Clear i/o channels.
   for(i = 0; i < NUM_CHANNELS; i++)

@@ -61,35 +61,33 @@ static int sim_initialize_engine(void)
   /* Initialize the simulation */
   if(!Simulator.opt->debug_dsky)
   {
+    agc_load_rom(&Simulator.state, Simulator.opt->core);
+
     if(Simulator.opt->resume == NULL)
     {
       if(Simulator.opt->cfg)
       {
         if(CmOrLm)
         {
-          result = agc_engine_init(
-            &Simulator.state, Simulator.opt->core, "CM.core", 0);
+          result = agc_engine_init(&Simulator.state, "CM.core", 0);
         }
         else
         {
-          result = agc_engine_init(
-            &Simulator.state, Simulator.opt->core, "LM.core", 0);
+          result = agc_engine_init(&Simulator.state, "LM.core", 0);
         }
       }
       else if(Simulator.opt->no_resume)
       {
-        result = agc_engine_init(&Simulator.state, Simulator.opt->core, NULL, 0);
+        result = agc_engine_init(&Simulator.state, NULL, 0);
       }
       else
       {
-        result = agc_engine_init(
-          &Simulator.state, Simulator.opt->core, "core", 0);
+        result = agc_engine_init(&Simulator.state, "core", 0);
       }
     }
     else
     {
-      result = agc_engine_init(
-        &Simulator.state, Simulator.opt->core, Simulator.opt->resume, 1);
+      result = agc_engine_init(&Simulator.state, Simulator.opt->resume, 1);
     }
 
     /* Check AGC Engine Init Result and display proper message */
@@ -263,7 +261,7 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
-  agc_engine_init(&Simulator.state, "state/Core.bin", NULL, 0);
+  agc_load_rom(&Simulator.state, "state/Core.bin");
   while(1)
   {
     /* Manage the Simulated Time */
