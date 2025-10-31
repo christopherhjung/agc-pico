@@ -66,7 +66,7 @@ static int sim_initialize_engine(void)
     const uint8_t* data = read_file(Simulator.opt->core, &len);
     agc_load_rom(&Simulator.state, data, len);
     free((void*)data);
-
+/*
     if(Simulator.opt->resume == NULL)
     {
       if(Simulator.opt->cfg)
@@ -92,7 +92,7 @@ static int sim_initialize_engine(void)
     else
     {
       result = agc_engine_init(&Simulator.state, Simulator.opt->resume, 1);
-    }
+    }*/
 
     /* Check AGC Engine Init Result and display proper message */
     switch(result)
@@ -265,10 +265,10 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
-  //uint64_t len;
-  //const uint8_t* data = read_file(Simulator.opt->core, &len);
-  //agc_engine_init(&Simulator.state, )
-  //free((void*)data);
+  uint64_t len;
+  const uint8_t* data = read_file("state/Core.bin", &len);
+  agc_engine_init(&Simulator.state, data, len, 0);
+  free((void*)data);
 
   while(1)
   {

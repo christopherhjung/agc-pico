@@ -198,11 +198,10 @@ Done:
   return (RetVal);
 }
 
-int agc_engine_init(agc_state_t* state, const char* core_dump, int all_or_erasable)
+int agc_engine_init(agc_state_t* state, const uint8_t* core_image, uint64_t core_size, int all_or_erasable)
 {
   uint64_t lli;
   int      ret = 0, i, j, Bank;
-  FILE*    cd  = NULL;
 
   // Clear i/o channels.
   for(i = 0; i < NUM_CHANNELS; i++)
@@ -282,111 +281,74 @@ int agc_engine_init(agc_state_t* state, const char* core_dump, int all_or_erasab
     mem0(0376) = 004003;
   }
 
-  if(core_dump != NULL)
+  if(core_image == NULL)
+    goto Done;
+
+  ret = 5;
+
+  // Load up the i/o channels.
+  for(i = 0; i < NUM_CHANNELS; i++)
   {
-    cd = fopen(core_dump, "r");
-    if(cd == NULL)
-    {
-      if(all_or_erasable)
-        ret = 6;
-      else
-        ret = 0;
-    }
-    else
-    {
-      ret = 5;
-
-      // Load up the i/o channels.
-      for(i = 0; i < NUM_CHANNELS; i++)
-      {
-        if(1 != fscanf(cd, "%o", &j))
-          goto Done;
-        if(all_or_erasable)
-          input(i) = j;
-      }
-
-      // Load up erasable memory.
-      for(Bank = 0; Bank < 8; Bank++)
-        for(j = 0; j < 0400; j++)
-        {
-          if(1 != fscanf(cd, "%o", &i))
-            goto Done;
-          if(all_or_erasable || Bank > 0 || j >= 010)
-            state->erasable[Bank][j] = i;
-        }
-
-      if(all_or_erasable)
-      {
-        // Set up the CPU state variables that aren't part of normal memory.
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->cycle_counter = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->extra_code = i;
-        // I've seen no indication so far of a reset value for interrupt-enable.
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->allow_interrupt = i;
-        //if (1 != fscanf (cd, "%o", &i))
-        //  goto Done;
-        //State->RegA16 = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->pend_flag = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->pend_delay = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->extra_delay = i;
-        //if (1 != fscanf (cd, "%o", &i))
-        //  goto Done;
-        //State->RegQ16 = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->output_channel_7 = i;
-        for(j = 0; j < 16; j++)
-        {
-          if(1 != fscanf(cd, "%o", &i))
-            goto Done;
-          state->output_channel_10[j] = i;
-        }
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->index_value = i;
-        for(j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
-        {
-          if(1 != fscanf(cd, "%o", &i))
-            goto Done;
-          state->interrupt_requests[j] = i;
-        }
-        // Override the above and make DOWNRUPT always enabled at start.
-        state->interrupt_requests[8] = 1;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->in_isr = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->substitute_instruction = i;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->downrupt_time_valid = i;
-        if(1 != fscanf(cd, "%llo", &lli))
-          goto Done;
-        state->downrupt_time = lli;
-        if(1 != fscanf(cd, "%o", &i))
-          goto Done;
-        state->downlink = i;
-      }
-
-      ret = 0;
-    }
+    if(1 != scanf("%o", &j))
+      goto Done;
+    if(all_or_erasable)
+      input(i) = j;
   }
 
+  // Load up erasable memory.
+  for(Bank = 0; Bank < 8; Bank++)
+    for(j = 0; j < 0400; j++)
+    {
+      if(1 != scanf("%o", &i))
+        goto Done;
+      if(all_or_erasable || Bank > 0 || j >= 010)
+        state->erasable[Bank][j] = i;
+    }
+
+  if(all_or_erasable)
+  {
+    // Set up the CPU state variables that aren't part of normal memory.
+    core_image += fscanf("%o", &state->cycle_counter);
+    core_image += fscanf("%o", &i);
+    state->extra_code = i;
+    core_image += fscanf("%o", &i);
+    state->allow_interrupt = i;
+    core_image += fscanf("%o", &i);
+    state->pend_flag = i;
+    core_image += fscanf("%o", &i);
+    state->pend_delay = i;
+    core_image += fscanf("%o", &i);
+    state->extra_delay = i;
+    core_image += fscanf("%o", &state->output_channel_7);
+
+    for(j = 0; j < 16; j++)
+    {
+      core_image += fscanf("%o", &state->output_channel_10[j]);
+    }
+    core_image += fscanf("%o", &i);
+    state->index_value = i;
+    for(j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
+    {
+      core_image += fscanf("%o", &i);
+      state->interrupt_requests[j] = i;
+    }
+    // Override the above and make DOWNRUPT always enabled at start.
+    state->interrupt_requests[8] = 1;
+    core_image += fscanf("%o", &i);
+    state->in_isr = i;
+    core_image += fscanf("%o", &i);
+    state->substitute_instruction = i;
+    core_image += fscanf("%o", &i);
+    state->downrupt_time_valid = i;
+    core_image += fscanf("%o", &i);
+    state->downrupt_time = lli;
+    core_image += fscanf("%o", &i);
+    state->downlink = i;
+  }
+
+  ret = 0;
+
 Done:
-  if(cd != NULL)
-    fclose(cd);
   return (ret);
 }
 
