@@ -1,5 +1,6 @@
 
 #include "profile.h"
+#include "file.h"
 
 #include <cjson/cJSON.h>
 #include <stdbool.h>
@@ -9,30 +10,6 @@
 
 
 row_t rows[704];
-
-char *read_file(const char *filename) {
-  FILE *file = fopen(filename, "rb");
-  if (!file) {
-    perror("Failed to open file");
-    return NULL;
-  }
-
-  fseek(file, 0, SEEK_END);
-  long length = ftell(file);
-  rewind(file);
-
-  char *data = (char *)malloc(length + 1);
-  if (!data) {
-    perror("Memory allocation failed");
-    fclose(file);
-    return NULL;
-  }
-
-  fread(data, 1, length, file);
-  data[length] = '\0';
-  fclose(file);
-  return data;
-}
 
 row_t profile_get_data(int seconds)
 {
@@ -67,7 +44,8 @@ void profile_load_json(cJSON *json)
 bool profile_load_file()
 {
   const char *filename = "resources/profile.json";
-  char *file_contents = read_file(filename);
+  uint64_t len;
+  char *file_contents = read_file(filename, &len);
   if (!file_contents) {
     return 1;
   }

@@ -122,40 +122,29 @@ int initializeSunburst37 = 0;
 // If AllOrErasable == 0, then only the erasable memory is initialized from the
 // core-dump file.
 
-int agc_load_rom(agc_state_t* state, const char* image)
-
+int agc_load_rom(agc_state_t* state, const uint8_t* image, uint64_t image_size)
 {
-  FILE* fp = NULL;
   int   bank;
-  int   m, n, i, j;
+  int   i, j;
   int   RetVal = 0;
 
   // The following sequence of steps loads the ROM image into the simulated
   // core memory, in what I think is a pretty obvious way.
 
-  fp = fopen(image, "rb");
-  if(fp == NULL)
-  {
-    RetVal = 1;
-    goto Done;
-  }
 
-  fseek(fp, 0, SEEK_END);
-  n = ftell(fp);
-  if(0 != (n & 1))
+  if(0 != (image_size & 1))
   { // Must be an integral number of words.
     RetVal = 3;
     goto Done;
   }
 
-  n /= 2; // Convert byte-count to word-count.
-  if(n > 36 * 02000)
+  image_size /= 2; // Convert byte-count to word-count.
+  if(image_size > 36 * 02000)
   {
     RetVal = 2;
     goto Done;
   }
 
-  fseek(fp, 0, SEEK_SET);
   if(state == NULL)
   {
     RetVal = 4;
@@ -165,17 +154,9 @@ int agc_load_rom(agc_state_t* state, const char* image)
   state->check_parity = 0;
   memset(&state->parities, 0, sizeof(state->parities));
 
-  for(bank = 2, j = 0, i = 0; i < n; i++)
+  const uint16_t* image2 = (const uint16_t*)image;
+  for(bank = 2, j = 0, i = 0; i < image_size; i++)
   {
-    unsigned char In[2];
-    uint8_t       parity;
-    uint16_t      raw_value;
-    m = fread(In, 1, 2, fp);
-    if(m != 2)
-    {
-      RetVal = 5;
-      goto Done;
-    }
     // Within the input file, the fixed-memory banks are arranged in the order
     // 2, 3, 0, 1, 4, 5, 6, 7, ..., 35.  Therefore, we have to take a little care
     // reordering the banks.
@@ -184,8 +165,8 @@ int agc_load_rom(agc_state_t* state, const char* image)
       RetVal = 2;
       goto Done;
     }
-    raw_value = (In[0] * 256 + In[1]);
-    parity    = raw_value & 1;
+    uint16_t raw_value = image2[i] >> 8 | ((image2[i] & 0xff) << 8);
+    uint8_t parity    = raw_value & 1;
 
     state->fixed[bank][j] = raw_value >> 1;
     state->parities[(bank * 02000 + j) / 32] |= parity << (j % 32);
@@ -214,8 +195,6 @@ int agc_load_rom(agc_state_t* state, const char* image)
   }
 
 Done:
-  if(fp != NULL)
-    fclose(fp);
   return (RetVal);
 }
 

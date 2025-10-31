@@ -358,7 +358,7 @@ extern int CmOrLm;
 
 int     agc_engine(agc_state_t* state);
 int     agc_engine_init(agc_state_t* state, const char* core_dump, int all_or_erasable);
-int     agc_load_rom(agc_state_t* Stage, const char* image);
+int     agc_load_rom(agc_state_t* Stage, const uint8_t* image, uint64_t image_size);
 int     read_io(agc_state_t* state, int addr);
 void    write_io(agc_state_t* state, int addr, int val);
 void    cpu_write_io(agc_state_t* state, int addr, int val);

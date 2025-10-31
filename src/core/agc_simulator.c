@@ -37,12 +37,12 @@
                 09/30/16 MAS    Added the InhibitAlarms option.
  */
 
-#include <core/agc_simulator.h>
-
 #include <assert.h>
+#include <core/agc_simulator.h>
+#include <core/dsky.h>
 
 #include "agc_engine.h"
-#include <core/dsky.h>
+#include "file.h"
 
 #ifdef PLATFORMIO
 #include <Arduino.h>
@@ -61,7 +61,11 @@ static int sim_initialize_engine(void)
   /* Initialize the simulation */
   if(!Simulator.opt->debug_dsky)
   {
-    agc_load_rom(&Simulator.state, Simulator.opt->core);
+
+    uint64_t len;
+    const uint8_t* data = read_file(Simulator.opt->core, &len);
+    agc_load_rom(&Simulator.state, data, len);
+    free((void*)data);
 
     if(Simulator.opt->resume == NULL)
     {
@@ -261,7 +265,11 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
-  agc_load_rom(&Simulator.state, "state/Core.bin");
+  //uint64_t len;
+  //const uint8_t* data = read_file(Simulator.opt->core, &len);
+  //agc_engine_init(&Simulator.state, )
+  //free((void*)data);
+
   while(1)
   {
     /* Manage the Simulated Time */
