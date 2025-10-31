@@ -124,47 +124,30 @@ int initializeSunburst37 = 0;
 
 int agc_load_rom(agc_state_t* state, const uint8_t* image, uint64_t image_size)
 {
-  int   bank;
-  int   i, j;
-  int   RetVal = 0;
-
   // The following sequence of steps loads the ROM image into the simulated
   // core memory, in what I think is a pretty obvious way.
 
-
+  // Must be an integral number of words.
   if(0 != (image_size & 1))
-  { // Must be an integral number of words.
-    RetVal = 3;
-    goto Done;
-  }
+    return 3;
 
   image_size /= 2; // Convert byte-count to word-count.
   if(image_size > 36 * 02000)
-  {
-    RetVal = 2;
-    goto Done;
-  }
+    return 2;
 
   if(state == NULL)
-  {
-    RetVal = 4;
-    goto Done;
-  }
+    return 4;
 
   state->check_parity = 0;
   memset(&state->parities, 0, sizeof(state->parities));
 
   const uint16_t* image2 = (const uint16_t*)image;
-  for(bank = 2, j = 0, i = 0; i < image_size; i++)
+  for(int bank = 2, j = 0, i = 0; i < image_size; i++)
   {
     // Within the input file, the fixed-memory banks are arranged in the order
     // 2, 3, 0, 1, 4, 5, 6, 7, ..., 35.  Therefore, we have to take a little care
     // reordering the banks.
-    if(bank > 35)
-    {
-      RetVal = 2;
-      goto Done;
-    }
+    if(bank > 35) return 2;
     uint16_t raw_value = image2[i] >> 8 | ((image2[i] & 0xff) << 8);
     uint8_t parity    = raw_value & 1;
 
@@ -194,8 +177,7 @@ int agc_load_rom(agc_state_t* state, const uint8_t* image, uint64_t image_size)
     }
   }
 
-Done:
-  return (RetVal);
+  return 0;
 }
 
 int agc_engine_init(agc_state_t* state, const uint8_t* core_image, uint64_t core_size, int all_or_erasable)
@@ -308,41 +290,41 @@ int agc_engine_init(agc_state_t* state, const uint8_t* core_image, uint64_t core
   if(all_or_erasable)
   {
     // Set up the CPU state variables that aren't part of normal memory.
-    core_image += fscanf("%o", &state->cycle_counter);
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &state->cycle_counter);
+    core_image += scanf("%o", &i);
     state->extra_code = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->allow_interrupt = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->pend_flag = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->pend_delay = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->extra_delay = i;
-    core_image += fscanf("%o", &state->output_channel_7);
+    core_image += scanf("%o", &state->output_channel_7);
 
     for(j = 0; j < 16; j++)
     {
-      core_image += fscanf("%o", &state->output_channel_10[j]);
+      core_image += scanf("%o", &state->output_channel_10[j]);
     }
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->index_value = i;
     for(j = 0; j < 1 + NUM_INTERRUPT_TYPES; j++)
     {
-      core_image += fscanf("%o", &i);
+      core_image += scanf("%o", &i);
       state->interrupt_requests[j] = i;
     }
     // Override the above and make DOWNRUPT always enabled at start.
     state->interrupt_requests[8] = 1;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->in_isr = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->substitute_instruction = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->downrupt_time_valid = i;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->downrupt_time = lli;
-    core_image += fscanf("%o", &i);
+    core_image += scanf("%o", &i);
     state->downlink = i;
   }
 

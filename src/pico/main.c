@@ -45,9 +45,15 @@
 */
 
 #include <core/agc_simulator.h>
+
+#include "core/profile.h"
 #include "pico/stdlib.h"
 
-const char *data_b64 =  (const char *)0x10200000;
+
+
+const uint8_t *rom =  (const uint8_t *)0x10100000;
+const uint8_t *core =  (const uint8_t *)0x1020000;
+const uint8_t *profile =  (const uint8_t *)0x1030000;
 
 /**
 The AGC main function from here the Command Line is parsed, the
@@ -57,14 +63,18 @@ int main(int argc, char* argv[])
 {
   stdio_init_all();  // Initialize USB or UART serial I/O
 
+  //profile_load_file(profile, 25383);
   /* Declare Options and parse the command line */
-  opt_t opt;
+  opt_t opt = {0};
 
   /* Initialize the Simulator and debugger if enabled
 	 * if the initialization fails or Options is NULL then the simulator will
 	 * return a non zero value and subsequently bail and exit the program */
-  if(sim_init(&opt) == SIM_E_OK)
-    sim_exec();
+
+  agc_load_rom(&Simulator.state, rom, 73728);
+  sim_init(&opt);
+  agc_engine_init(&Simulator.state, core, 73728, 0);
+  sim_exec();
 
   return (0);
 }

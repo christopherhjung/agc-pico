@@ -346,7 +346,6 @@ typedef struct
   uint16_t dsky_channel_163; // Copy of the fake DSKY channel 163
 } agc_state_t;
 
-extern int DebugDsky;
 extern int InhibitAlarms;
 extern int ShowAlarms;
 extern int NumDebugRules;

@@ -1,6 +1,8 @@
 #pragma once
 #include <stdbool.h>
 
+#include <stdint.h>
+
 typedef struct
 {
   double second;
@@ -11,4 +13,4 @@ typedef struct
 
 row_t profile_get_data(int seconds);
 
-bool profile_load_file();
+bool profile_load_file(const uint8_t* data, uint64_t len);

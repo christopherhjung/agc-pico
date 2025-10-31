@@ -49,6 +49,7 @@
 
 #include "agc_cli.h"
 #include "core/profile.h"
+#include "file.h"
 
 // Set terminal to raw mode (no buffering, no enter needed)
 void set_conio_terminal_mode()
@@ -74,6 +75,14 @@ typedef struct {
   unsigned int value : 15;
 }intagc_t;
 
+
+long long time_us_64(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (ts.tv_sec * 1000000LL + ts.tv_nsec / 1000);
+}
+
 /**
 The AGC main function from here the Command Line is parsed, the
 Simulator is initialized and subsequently executed.
@@ -82,16 +91,36 @@ int main(int argc, char* argv[])
 {
   set_conio_terminal_mode();
 
-  profile_load_file();
+
+  const char *filename = "resources/profile.json";
+  uint64_t len;
+  char *file_contents = read_file(filename, &len);
+  if (!file_contents) {
+    return 1;
+  }
+  profile_load_file(file_contents, len);
+  free((void*)file_contents);
+
+
+  opt_t* opt = cli_parse_args(argc, argv);
+
+  char *rom = read_file("bin/Colossus249.bin", &len);
+  agc_load_rom(&Simulator.state, rom, len);
+  free(rom);
+
+  sim_init(opt);
+
+  char *core = read_file("state/Core.bin", &len);
+  agc_engine_init(&Simulator.state, core, len, 0);
+  free(core);
+
 
   /* Declare Options and parse the command line */
-  opt_t* opt = cli_parse_args(argc, argv);
 
   /* Initialize the Simulator and debugger if enabled
 	 * if the initialization fails or Options is NULL then the simulator will
 	 * return a non zero value and subsequently bail and exit the program */
-  if(sim_init(opt) == SIM_E_OK)
-    sim_exec();
+  sim_exec();
 
   return (0);
 }

@@ -37,22 +37,14 @@
  */
 #pragma once
 
+#include <time.h>
+
 #include "agc.h"
 #include "agc_engine.h"
 
-#ifdef PLATFORMIO
-struct tms
-{
-  clock_t tms_utime;  /* user time */
-  clock_t tms_stime;  /* system time */
-  clock_t tms_cutime; /* user time of children */
-  clock_t tms_cstime; /* system time of children */
-};
-
-#define _SC_CLK_TCK (1000)
-#define sysconf(x) (x)
-#define times(p) (clock_t)0
-
+#ifdef PICO_BOARD
+#include "pico/stdlib.h"
+#include <pico/times.h>
 #else
 
 #include <sys/times.h>
@@ -95,7 +87,7 @@ typedef struct
 
 typedef struct
 {
-  opt_t*      opt;
+  //opt_t*      opt;
   clock_t     dump_interval;
   clock_t     real_time_offset;
   clock_t     real_time;
@@ -112,4 +104,3 @@ extern sim_t Simulator;
 extern void sim_set_cycle_count(int Mode);
 extern int  sim_init(opt_t* opt);
 extern void sim_exec(void);
-extern void sim_time_update(void);

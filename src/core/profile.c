@@ -1,13 +1,10 @@
 
 #include "profile.h"
-#include "file.h"
 
 #include <cjson/cJSON.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-
-
 
 row_t rows[704];
 
@@ -41,20 +38,16 @@ void profile_load_json(cJSON *json)
   }
 }
 
-bool profile_load_file()
+bool profile_load_file(const uint8_t* data, uint64_t len)
 {
-  const char *filename = "resources/profile.json";
-  uint64_t len;
-  char *file_contents = read_file(filename, &len);
-  if (!file_contents) {
-    return 1;
-  }
-
   // Parse JSON string
-  cJSON *json = cJSON_Parse(file_contents);
+  cJSON *json = cJSON_ParseWithLength(data, len);
   if(json){
+    printf("success to load profile\n");
     profile_load_json(json);
+  }else
+  {
+    printf("failed to load profile\n");
   }
-  free(file_contents);
   return json != NULL;
 }

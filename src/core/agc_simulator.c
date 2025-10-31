@@ -42,11 +42,8 @@
 #include <core/dsky.h>
 
 #include "agc_engine.h"
-#include "file.h"
 
-#ifdef PLATFORMIO
-#include <Arduino.h>
-#else
+#ifndef PICO_BOARD
 #include <stdio.h>
 #include <unistd.h>
 #endif
@@ -58,63 +55,59 @@ static int sim_initialize_engine(void)
 {
   int result = 0;
 
-  /* Initialize the simulation */
-  if(!Simulator.opt->debug_dsky)
-  {
 
-    uint64_t len;
-    const uint8_t* data = read_file(Simulator.opt->core, &len);
-    agc_load_rom(&Simulator.state, data, len);
-    free((void*)data);
+  //uint64_t len;
+  //const uint8_t* data = read_file(Simulator.opt->core, &len);
+  //agc_load_rom(&Simulator.state, data, len);
+  //free((void*)data);
 /*
-    if(Simulator.opt->resume == NULL)
+  if(Simulator.opt->resume == NULL)
+  {
+    if(Simulator.opt->cfg)
     {
-      if(Simulator.opt->cfg)
+      if(CmOrLm)
       {
-        if(CmOrLm)
-        {
-          result = agc_engine_init(&Simulator.state, "CM.core", 0);
-        }
-        else
-        {
-          result = agc_engine_init(&Simulator.state, "LM.core", 0);
-        }
-      }
-      else if(Simulator.opt->no_resume)
-      {
-        result = agc_engine_init(&Simulator.state, NULL, 0);
+        result = agc_engine_init(&Simulator.state, "CM.core", 0);
       }
       else
       {
-        result = agc_engine_init(&Simulator.state, "core", 0);
+        result = agc_engine_init(&Simulator.state, "LM.core", 0);
       }
+    }
+    else if(Simulator.opt->no_resume)
+    {
+      result = agc_engine_init(&Simulator.state, NULL, 0);
     }
     else
     {
-      result = agc_engine_init(&Simulator.state, Simulator.opt->resume, 1);
-    }*/
-
-    /* Check AGC Engine Init Result and display proper message */
-    switch(result)
-    {
-      case 0:
-        break; /* All is OK */
-      case 1:
-        printf("Specified core-rope image file not found.\n");
-        break;
-      case 2:
-        printf("Core-rope image larger than core memory.\n");
-        break;
-      case 3:
-        printf("Core-rope image file must have even size.\n");
-        break;
-      case 5:
-        printf("Core-rope image file read error.\n");
-        break;
-      default:
-        printf("Initialization implementation error.\n");
-        break;
+      result = agc_engine_init(&Simulator.state, "core", 0);
     }
+  }
+  else
+  {
+    result = agc_engine_init(&Simulator.state, Simulator.opt->resume, 1);
+  }*/
+
+  /* Check AGC Engine Init Result and display proper message */
+  switch(result)
+  {
+    case 0:
+      break; /* All is OK */
+    case 1:
+      printf("Specified core-rope image file not found.\n");
+      break;
+    case 2:
+      printf("Core-rope image larger than core memory.\n");
+      break;
+    case 3:
+      printf("Core-rope image file must have even size.\n");
+      break;
+    case 5:
+      printf("Core-rope image file read error.\n");
+      break;
+    default:
+      printf("Initialization implementation error.\n");
+      break;
   }
 
   return (result);
@@ -142,17 +135,12 @@ int sim_init(opt_t* opt)
     return (6);
 
   /* Set the basic simulator variables */
-  Simulator.opt           = opt;
   Simulator.dump_interval = opt->dump_time * sysconf(_SC_CLK_TCK);
 
   /* Set legacy Option variables */
-  DebugDsky     = opt->debug_dsky;
   InhibitAlarms = opt->inhibit_alarms;
   ShowAlarms    = opt->show_alarms;
   /* If we are not in quiet mode display the version info */
-
-  /* Initialize the AGC Engine */
-  result = sim_initialize_engine();
 
   /* Initialize realtime and cycle counters */
   Simulator.real_time_offset = times(&Simulator.dummy_time); // The starting time of the program.
@@ -195,8 +183,8 @@ static void sim_sleep(void)
 {
 #ifdef WIN32
   Sleep(10);
-#elif PICO_BOARD
-  sleep_ms(10);
+#elif defined(PICO_BOARD)
+  sleep_us(10000);
 #else
   struct timespec req, rem;
   req.tv_sec  = 0;
@@ -205,15 +193,6 @@ static void sim_sleep(void)
 #endif
 }
 
-/**
- * This function is a helper to allow the debugger to update the realtime
- */
-void sim_time_update(void)
-{
-  Simulator.real_time_offset +=
-    ((Simulator.real_time = times(&Simulator.dummy_time)) - Simulator.last_real_time);
-  Simulator.last_real_time = Simulator.real_time;
-}
 
 /**
 This function manages the Simulator time to achieve the
@@ -222,6 +201,7 @@ average 11.7 microsecond per opcode execution
 static void sim_manage_time(void)
 {
   Simulator.real_time = times(&Simulator.dummy_time);
+
   if(Simulator.real_time != Simulator.last_real_time)
   {
     // Need to recalculate the number of AGC cycles we're supposed to
@@ -245,7 +225,9 @@ static void sim_manage_time(void)
     Simulator.desired_cycles *= AGC_PER_SECOND;
   }
   else
+  {
     sim_sleep();
+  }
 }
 
 /**
@@ -265,18 +247,19 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
-  uint64_t len;
-  const uint8_t* data = read_file("state/Core.bin", &len);
-  agc_engine_init(&Simulator.state, data, len, 0);
-  free((void*)data);
+  //uint64_t len;
+  //const uint8_t* data = read_file("state/Core.bin", &len);
+  //agc_engine_init(&Simulator.state, data, len, 0);
+  //free((void*)data);
 
   while(1)
   {
-    /* Manage the Simulated Time */
-    sim_manage_time();
 
-    while(Simulator.cycle_dump < Simulator.desired_cycles)
-    {
+    /* Manage the Simulated Time */
+    //sim_manage_time();
+
+    //while(Simulator.cycle_dump < Simulator.desired_cycles)
+    //{
       /* Execute a cycle of the AGC engine */
       sim_exec_engine();
 
@@ -284,7 +267,7 @@ void sim_exec(void)
       dsky_output_handle();
 
       /* Adjust the CycleCount */
-      sim_set_cycle_count(SIM_CYCLECOUNT_INC);
-    }
+      //sim_set_cycle_count(SIM_CYCLECOUNT_INC);
+    //}
   }
 }

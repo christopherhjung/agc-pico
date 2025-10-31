@@ -523,7 +523,6 @@ FILE* CduLog = NULL;
 #define WARNING_FILTER_MAX 140000
 #define WARNING_FILTER_THRESHOLD 20000
 
-int DebugDsky     = 0;
 int InhibitAlarms = 0;
 int ShowAlarms    = 0;
 int NumDebugRules = 0;
@@ -2229,11 +2228,6 @@ int agc_engine(agc_state_t* state)
   // Get data from input channels.  Return immediately if a unprogrammed
   // counter-increment was performed.
   if(agc_channel_input(state))
-    return (0);
-
-  // If in --debug-dsky mode, don't want to take the chance of executing
-  // any AGC code, since there isn't any loaded anyway.
-  if(DebugDsky)
     return (0);
 
   //----------------------------------------------------------------------
