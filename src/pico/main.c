@@ -6,6 +6,7 @@
 #include "pico/stdlib.h"
 
 #include "max7221.c"
+#include "ws2812.c"
 
 
 const uint8_t *rom =  (const uint8_t *)0x10100000;
@@ -15,7 +16,17 @@ const uint8_t *profile =  (const uint8_t *)0x1030000;
 int main(int argc, char* argv[])
 {
   stdio_init_all();  // Initialize USB or UART serial I/O
+
   init_numeric_display();
+
+  gpio_init(OE_PIN);
+  gpio_set_dir(OE_PIN, GPIO_OUT);
+  gpio_put(OE_PIN, 1); // Set GPIO 22 HIGH
+
+  sleep_ms(1);
+
+  init_indicator_display();
+
 
   vreg_set_voltage(VREG_VOLTAGE_1_25);
   set_sys_clock_khz(360000, true);
@@ -29,4 +40,10 @@ int main(int argc, char* argv[])
   sim_exec();
 
   return (0);
+}
+
+void dsky_print(dsky_t *dsky)
+{
+  refresh_numeric_display(dsky);
+  refresh_indicator_display(dsky);
 }

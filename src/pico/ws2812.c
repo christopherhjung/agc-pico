@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "hardware/clocks.h"
+#include "core/dsky.h"
 #include "hardware/pio.h"
 #include "pico/stdlib.h"
 #include "ws2812.pio.h"
@@ -113,19 +114,12 @@ const struct
   {pattern_greys, "Greys"},
 };
 
-int main()
+static PIO  pio;
+static uint sm;
+static uint offset;
+
+void init_indicator_display()
 {
-  //set_sys_clock_48();
-  stdio_init_all();
-
-  gpio_init(22);
-  gpio_set_dir(22, GPIO_OUT);
-  gpio_put(22, 1); // Set GPIO 22 HIGH
-
-  // todo get free sm
-  PIO  pio;
-  uint sm;
-  uint offset;
 
   // This will find a free pio and state machine for our program and load it for us
   // We use pio_claim_free_sm_and_add_program_for_gpio_range (for_gpio_range variant)
@@ -136,21 +130,15 @@ int main()
 
   ws2812_program_init(pio, sm, offset, WS2812_PIN, 800000, IS_RGBW);
 
-  int t = 0;
-  while(1)
-  {
-    int pat = rand() % count_of(pattern_table);
-    int dir = (rand() >> 30) & 1 ? 1 : -1;
-    puts(pattern_table[pat].name);
-    puts(dir == 1 ? "(forward)" : "(backward)");
-    for(int i = 0; i < 1000; ++i)
-    {
-      pattern_table[pat].pat(pio, sm, NUM_PIXELS, t);
-      sleep_ms(10);
-      t += dir;
-    }
-  }
+  for(uint i = 0; i < NUM_PIXELS; ++i)
+    put_pixel(pio, sm, 255 << 16);
+}
 
-  // This will free resources and unload our program
+void refresh_indicator_display(dsky_t* dsky)
+{
+}
+
+void deinit_indicator_display()
+{
   pio_remove_program_and_unclaim_sm(&ws2812_program, pio, sm, offset);
 }

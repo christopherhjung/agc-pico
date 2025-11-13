@@ -87,7 +87,7 @@ static void write_register(uint8_t reg, uint8_t* data)
 }
 #endif
 
-void dsky_print(dsky_t *dsky)
+void refresh_numeric_display(dsky_t *dsky)
 {
   uint8_t plus_encoding = 15;
   uint8_t first_sign = dsky->rows[0].plus ? plus_encoding : (dsky->rows[0].minus ? 10 : 15);
@@ -129,9 +129,6 @@ void clear()
 
 void init_numeric_display()
 {
-  gpio_init(OE_PIN);
-  gpio_set_dir(OE_PIN, GPIO_OUT);
-  gpio_put(OE_PIN, 1); // Set GPIO 22 HIGH
 
   gpio_init(PICO_DEFAULT_SPI_CSN_PIN);
   gpio_set_dir(PICO_DEFAULT_SPI_CSN_PIN, GPIO_OUT);
