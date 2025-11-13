@@ -275,26 +275,26 @@ int dsky_channel_output(uint16_t channel, uint16_t value)
   return ringbuffer_put(&ringbuffer_in, (unsigned char*)&packet);
 }
 
-int map[] = {10, 10, 10, 1,  10, 10, 10, 10, 10, 10, 10,
-             10, 10, 10, 10, 4,  10, 10, 10, 7,  10, 0,
-             10, 10, 10, 2,  10, 3,  6,  8,  5,  9};
+int map[] = {15, 15, 15, 1,  15, 15, 15, 15, 15, 15, 15,
+             15, 15, 15, 15, 4,  15, 15, 15, 7,  15, 0,
+             15, 15, 15, 2,  15, 3,  6,  8,  5,  9};
 
 void dsky_row_init(dsky_row_t* row)
 {
   row->plus   = 0;
   row->minus  = 0;
-  row->first  = 10;
-  row->second = 10;
-  row->third  = 10;
-  row->fourth = 10;
-  row->fifth  = 10;
+  row->first  = 15;
+  row->second = 15;
+  row->third  = 15;
+  row->fourth = 15;
+  row->fifth  = 15;
 }
 
 void dsky_two_init(dsky_two_t* two)
 {
   two->on     = 1;
-  two->first  = 10;
-  two->second = 10;
+  two->first  = 15;
+  two->second = 15;
 }
 
 void dsky_init(dsky_t* dsky)
@@ -372,52 +372,4 @@ int dsky_update_digit(dsky_t* dsky, uint16_t value)
   }
 
   return 1;
-}
-
-char digit2char(unsigned int digit)
-{
-  if(digit >= 10)
-    return ' ';
-  return '0' + digit;
-}
-
-void dsky_row_print(dsky_row_t* row)
-{
-  printf(
-    "%c%c%c%c%c%c\n",
-    row->minus    ? '-'
-      : row->plus ? '+'
-                  : ' ',
-    digit2char(row->first),
-    digit2char(row->second),
-    digit2char(row->third),
-    digit2char(row->fourth),
-    digit2char(row->fifth));
-}
-
-void dsky_two_print(dsky_two_t* two)
-{
-  if(two->on)
-    printf("%c%c", digit2char(two->first), digit2char(two->second));
-  else
-    printf("  ");
-}
-
-void dsky_print(dsky_t* dsky)
-{
-  printf("%d\n", *((uint16_t*)&dsky->flags));
-  printf("CA  PR\n");
-  printf("%s", dsky->comp_acty ? "XX" : "  ");
-  printf("  ");
-  dsky_two_print(&dsky->prog);
-  printf("\n");
-  printf("VB  NO\n");
-  dsky_two_print(&dsky->verb);
-  printf("  ");
-  dsky_two_print(&dsky->noun);
-  printf("\n");
-  dsky_row_print(&dsky->rows[0]);
-  dsky_row_print(&dsky->rows[1]);
-  dsky_row_print(&dsky->rows[2]);
-  printf("%llu - %llu\n", current_time - start_time, real_current_time - real_start_time);
 }

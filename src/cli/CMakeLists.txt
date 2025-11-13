@@ -10,6 +10,7 @@ set(VAGC_src
   main.c
   dsky_output_handler.c
   agc_cli.c
+  dsky_cli.c
   ../core/agc_simulator.c
   ../core/agc_engine_init.c
   ../core/agc_engine.c

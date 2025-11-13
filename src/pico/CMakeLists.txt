@@ -26,19 +26,24 @@ target_include_directories(cjson PUBLIC ../../thirdparty/)
 include_directories(..)
 
 add_executable(blink
-  dsky_output_handler.c
-  main.c
-  times.c
-  ../core/agc_simulator.c
-  ../core/agc_engine_init.c
-  ../core/agc_engine.c
-  ../core/agc_io_handler.c
-  ../core/ringbuffer.c
-  ../core/dsky.c
-  ../core/profile.c
+  #dsky_output_handler.c
+  #main.c
+  #times.c
+  #../core/agc_simulator.c
+  #../core/agc_engine_init.c
+  #../core/agc_engine.c
+  #../core/agc_io_handler.c
+  #../core/ringbuffer.c
+  #../core/dsky.c
+  #../core/profile.c
+  ws2812.c
 )
+
+pico_generate_pio_header(blink ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
+
+
 # pull in common dependencies
-target_link_libraries(blink pico_stdlib cjson)
+target_link_libraries(blink pico_stdlib hardware_spi hardware_pio cjson)
 
 if (PICO_CYW43_SUPPORTED)
   target_link_libraries(blink pico_cyw43_arch_none)
