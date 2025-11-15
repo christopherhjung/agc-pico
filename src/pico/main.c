@@ -1,6 +1,7 @@
 #include <core/agc_simulator.h>
 
 #include "core/profile.h"
+#include "core/dsky_dump.h"
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
 #include "pico/stdlib.h"
@@ -17,19 +18,16 @@ int main(int argc, char* argv[])
 {
   stdio_init_all();  // Initialize USB or UART serial I/O
 
-  init_numeric_display();
+
+  vreg_set_voltage(VREG_VOLTAGE_1_25);
+  set_sys_clock_khz(360000, true);
 
   gpio_init(OE_PIN);
   gpio_set_dir(OE_PIN, GPIO_OUT);
   gpio_put(OE_PIN, 1); // Set GPIO 22 HIGH
 
-  sleep_ms(1);
-
   init_indicator_display();
-
-
-  vreg_set_voltage(VREG_VOLTAGE_1_25);
-  set_sys_clock_khz(360000, true);
+  init_numeric_display();
 
   profile_load_file(profile, 25383);
   opt_t opt = {0};
@@ -42,8 +40,10 @@ int main(int argc, char* argv[])
   return (0);
 }
 
-void dsky_print(dsky_t *dsky)
+void dsky_refresh(dsky_t *dsky)
 {
   refresh_numeric_display(dsky);
   refresh_indicator_display(dsky);
+
+  dsky_print(dsky);
 }

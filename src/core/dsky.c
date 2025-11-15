@@ -217,23 +217,16 @@ void dsky_input_handle(dsky_t* dsky)
   uint16_t value;
   while(dsky_channel_input(&channel, &value))
   {
-    if(channel == 010)
+    if(channel == 8 || channel == 9 || channel == 11)//010
     {
-      if(dsky_update_digit(dsky, value))
-        dsky_print(dsky);
-    }
-    else if(channel == 011)
-    {
-      dsky->comp_acty = (value & 2) != 0;
-      dsky_print(dsky);
+      if(dsky_update_digit(dsky, channel, value))
+        dsky_refresh(dsky);
     }
     else if(channel == 0163)
     {
-      int is_off    = (value & 040);
-      dsky->noun.on = is_off == 0;
-      dsky->verb.on = is_off == 0;
-      dsky_print(dsky);
-      *((uint16_t*)&dsky->flags) = value;
+      dsky->blink_off = (value & 040) != 0;
+      dsky->indicator.restart = (value & 0200) != 0;
+      dsky_refresh(dsky);
     }
     else if(channel == 124 || channel == 125 || channel == 126)
     {
@@ -292,7 +285,6 @@ void dsky_row_init(dsky_row_t* row)
 
 void dsky_two_init(dsky_two_t* two)
 {
-  two->on     = 1;
   two->first  = 15;
   two->second = 15;
 }
@@ -300,7 +292,6 @@ void dsky_two_init(dsky_two_t* two)
 void dsky_init(dsky_t* dsky)
 {
   memset(dsky, 0, sizeof(dsky_t));
-  dsky->comp_acty = 0;
   dsky_two_init(&dsky->prog);
   dsky_two_init(&dsky->verb);
   dsky_two_init(&dsky->noun);
@@ -309,8 +300,24 @@ void dsky_init(dsky_t* dsky)
   dsky_row_init(&dsky->rows[2]);
 }
 
-int dsky_update_digit(dsky_t* dsky, uint16_t value)
+int dsky_update_digit(dsky_t* dsky, uint16_t channel, uint16_t value)
 {
+  if(channel == 9)
+  {
+    dsky->indicator.comp_acty = (value & 0x0002) != 0;
+    dsky->indicator.uplink_acty = (value & 0x0004) != 0;
+    dsky->indicator.temp = (value & 0x0008) != 0;
+    dsky->indicator.key_rel = (value & 0x0010) != 0;
+    dsky->indicator.opr_err = (value & 0x0040) != 0;
+    return 1;
+  }
+
+  if(channel == 11)
+  {
+    dsky->indicator.stby = (value & 0x0200) != 0;
+    return 1;
+  }
+
   int loc   = (value >> 11) & 0x0F;
   int sign  = (value >> 10) & 1;
   int left  = map[(value >> 5) & 0x1F];
@@ -366,6 +373,14 @@ int dsky_update_digit(dsky_t* dsky, uint16_t value)
     case 11:
       dsky->prog.first  = left;
       dsky->prog.second = right;
+      break;
+    case 12:
+      dsky->indicator.vel = (value & 0x0004) != 0;
+      dsky->indicator.no_att = (value & 0x0008) != 0;
+      dsky->indicator.alt = (value & 0x0010) != 0;
+      dsky->indicator.gimbal_lock = (value & 0x0020) != 0;
+      dsky->indicator.tracker = (value & 0x0080) != 0;
+      dsky->indicator.prog = (value & 0x0100) != 0;
       break;
     default:
       return 0;

@@ -50,6 +50,8 @@
 #include <unistd.h>
 
 #include "agc_cli.h"
+#include "core/dsky.h"
+#include "core/dsky_dump.h"
 #include "core/profile.h"
 #include "file.h"
 
@@ -138,4 +140,9 @@ int main(int argc, char* argv[])
   sim_exec();
 
   return (0);
+}
+
+void dsky_refresh(dsky_t *dsky)
+{
+  dsky_print(dsky);
 }

@@ -25,17 +25,13 @@ void dsky_row_print(dsky_row_t* row)
 
 void dsky_two_print(dsky_two_t* two)
 {
-  if(two->on)
-    printf("%c%c", digit2char(two->first), digit2char(two->second));
-  else
-    printf("  ");
+  printf("%c%c", digit2char(two->first), digit2char(two->second));
 }
 
 void dsky_print(dsky_t* dsky)
 {
-  printf("%d\n", *((uint16_t*)&dsky->flags));
   printf("CA  PR\n");
-  printf("%s", dsky->comp_acty ? "XX" : "  ");
+  printf("%s", dsky->indicator.comp_acty ? "XX" : "  ");
   printf("  ");
   dsky_two_print(&dsky->prog);
   printf("\n");

@@ -4,11 +4,14 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include <iso646.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "hardware/clocks.h"
 #include "core/dsky.h"
+#include "hardware/clocks.h"
+#include "hardware/dma.h"
 #include "hardware/pio.h"
 #include "pico/stdlib.h"
 #include "ws2812.pio.h"
@@ -27,7 +30,7 @@
  *
  */
 #define IS_RGBW false
-#define NUM_PIXELS 18
+#define NUM_PIXELS 37
 
 #ifdef PICO_DEFAULT_WS2812_PIN
 #define WS2812_PIN PICO_DEFAULT_WS2812_PIN
@@ -57,88 +60,91 @@ static inline uint32_t urgbw_u32(uint8_t r, uint8_t g, uint8_t b, uint8_t w)
     | ((uint32_t)(w) << 24) | (uint32_t)(b);
 }
 
-void pattern_snakes(PIO pio, uint sm, uint len, uint t)
-{
-  for(uint i = 0; i < len; ++i)
-  {
-    uint x = (i + (t >> 1)) % 64;
-    if(x < 10)
-      put_pixel(pio, sm, urgb_u32(0xff, 0, 0));
-    else if(x >= 15 && x < 25)
-      put_pixel(pio, sm, urgb_u32(0, 0xff, 0));
-    else if(x >= 30 && x < 40)
-      put_pixel(pio, sm, urgb_u32(0, 0, 0xff));
-    else
-      put_pixel(pio, sm, 0);
-  }
-}
-
-void pattern_random(PIO pio, uint sm, uint len, uint t)
-{
-  if(t % 8)
-    return;
-  for(uint i = 0; i < len; ++i)
-    put_pixel(pio, sm, rand());
-}
-
-void pattern_sparkle(PIO pio, uint sm, uint len, uint t)
-{
-  if(t % 8)
-    return;
-  for(uint i = 0; i < len; ++i)
-    put_pixel(pio, sm, rand() % 16 ? 0 : 0xffffffff);
-}
-
-void pattern_greys(PIO pio, uint sm, uint len, uint t)
-{
-  uint max = 100; // let's not draw too much current!
-  t %= max;
-  for(uint i = 0; i < len; ++i)
-  {
-    put_pixel(pio, sm, t * 0x10101);
-    if(++t >= max)
-      t = 0;
-  }
-}
-
-typedef void (*pattern)(PIO pio, uint sm, uint len, uint t);
-
-const struct
-{
-  pattern     pat;
-  const char* name;
-} pattern_table[] = {
-  {pattern_snakes, "Snakes!"},
-  {pattern_random, "Random data"},
-  {pattern_sparkle, "Sparkles"},
-  {pattern_greys, "Greys"},
-};
-
 static PIO  pio;
 static uint sm;
 static uint offset;
 
+static int dma_chan;
+
+static uint32_t pixel_buffer[NUM_PIXELS] = {0};
+
+void set_pixel_color(uint index, uint32_t grb)
+{
+  pixel_buffer[index] = grb;
+}
+
+void refresh_ws2812(PIO pio, uint sm, uint len) {
+  for (uint i = 0; i < len; ++i) {
+    put_pixel(pio, sm, pixel_buffer[i]);
+  }
+}
+
 void init_indicator_display()
 {
 
-  // This will find a free pio and state machine for our program and load it for us
-  // We use pio_claim_free_sm_and_add_program_for_gpio_range (for_gpio_range variant)
-  // so we will get a PIO instance suitable for addressing gpios >= 32 if needed and supported by the hardware
+  memset(pixel_buffer, 0, sizeof(pixel_buffer));
+
   bool success = pio_claim_free_sm_and_add_program_for_gpio_range(
     &ws2812_program, &pio, &sm, &offset, WS2812_PIN, 1, true);
   hard_assert(success);
 
   ws2812_program_init(pio, sm, offset, WS2812_PIN, 800000, IS_RGBW);
-
-  for(uint i = 0; i < NUM_PIXELS; ++i)
-    put_pixel(pio, sm, 255 << 16);
+  refresh_ws2812(pio, sm, NUM_PIXELS);
 }
+
+#define VERB_BACK_IDX 0
+#define NOUN_BACK_IDX 1
+#define PROG_BACK_IDX 2
+#define COMP_ACTY_IDX 3
+#define TEMP_IDX 4
+#define UPLINK_ACTY_IDX 5
+#define NO_ATT_IDX 6
+#define GIMBAL_LOCK_IDX 7
+#define PROG_IDX 8
+#define STBY_IDX 9
+#define KEY_REL_IDX 10
+#define RESTART_IDX 11
+#define TRACKER_IDX 12
+#define OPER_ERR_IDX 13
+#define ALT_IDX 15
+#define VEL_IDX 16
+#define KY_BACKLIGHT 18
+
 
 void refresh_indicator_display(dsky_t* dsky)
 {
+  bool blink_on = !dsky->blink_off;
+  uint32_t black = urgb_u32(0, 0, 0);
+  uint32_t white = urgb_u32(40, 40, 40);
+  uint32_t green = urgb_u32(0, 40, 0);
+  uint32_t orange = urgb_u32(40, 20, 0);
+
+  set_pixel_color(VERB_BACK_IDX, green);
+  set_pixel_color(NOUN_BACK_IDX, green);
+  set_pixel_color(PROG_BACK_IDX, green);
+  set_pixel_color(COMP_ACTY_IDX, dsky->indicator.comp_acty ? orange : black);
+  set_pixel_color(TEMP_IDX, dsky->indicator.temp ? orange : black);
+  set_pixel_color(UPLINK_ACTY_IDX, dsky->indicator.uplink_acty ? white : black);
+  set_pixel_color(NO_ATT_IDX, dsky->indicator.no_att ? white : black);
+  set_pixel_color(GIMBAL_LOCK_IDX, dsky->indicator.gimbal_lock ? orange : black);
+  set_pixel_color(PROG_IDX, dsky->indicator.prog ? orange : black);
+  set_pixel_color(STBY_IDX, dsky->indicator.stby ? white : black);
+  set_pixel_color(KEY_REL_IDX, dsky->indicator.key_rel && blink_on ? white : black);
+  set_pixel_color(RESTART_IDX, dsky->indicator.restart ? orange : black);
+  set_pixel_color(TRACKER_IDX, dsky->indicator.tracker ? orange : black);
+  set_pixel_color(OPER_ERR_IDX, dsky->indicator.opr_err && blink_on ? white : black);
+  set_pixel_color(ALT_IDX, dsky->indicator.alt ? orange : black);
+  set_pixel_color(VEL_IDX, dsky->indicator.vel ? orange : black);
+
+  for(size_t idx = 0; idx < 19; idx++)
+    set_pixel_color(KY_BACKLIGHT + idx, white);
+
+  refresh_ws2812(pio, sm, NUM_PIXELS);
 }
 
 void deinit_indicator_display()
 {
+  dma_channel_abort(dma_chan);
+
   pio_remove_program_and_unclaim_sm(&ws2812_program, pio, sm, offset);
 }

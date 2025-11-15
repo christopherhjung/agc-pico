@@ -36,7 +36,6 @@ typedef struct
 
 typedef struct
 {
-  unsigned int on : 1;
   unsigned int first : 4;
   unsigned int second : 4;
 } dsky_two_t;
@@ -46,24 +45,41 @@ typedef struct
   unsigned int reserved3 : 6;
   unsigned int EL_OFF : 1;
   unsigned int reserved2 : 1;
-  unsigned int STBY : 1;
-  unsigned int RESTART : 1;
-  unsigned int OPER_ERR : 1;
+  unsigned int stby : 1;
+  unsigned int restart : 1;
+  unsigned int opr_err : 1;
   unsigned int reserved1 : 1;
   unsigned int VN_FLASH : 1;
-  unsigned int KEY_REL : 1;
-  unsigned int TEMP : 1;
+  unsigned int key_rel : 1;
+  unsigned int temp : 1;
   unsigned int AGC_WARN : 1;
 } dsky_flags_t;
 
 typedef struct
 {
-  dsky_flags_t flags;
+  unsigned int vel : 1;
+  unsigned int no_att : 1;
+  unsigned int alt : 1;
+  unsigned int gimbal_lock : 1;
+  unsigned int restart : 1;
+  unsigned int tracker : 1;
+  unsigned int prog : 1;
+  unsigned int comp_acty : 1;
+  unsigned int uplink_acty : 1;
+  unsigned int temp : 1;
+  unsigned int key_rel : 1;
+  unsigned int opr_err : 1;
+  unsigned int stby : 1;
+} dsky_indicator_t;
+
+typedef struct
+{
+  dsky_indicator_t indicator;
   dsky_two_t   prog;
   dsky_two_t   verb;
   dsky_two_t   noun;
   dsky_row_t   rows[3];
-  unsigned int comp_acty : 1;
+  unsigned int blink_off : 1;
 } dsky_t;
 
 void dsky_input_handle(dsky_t* dsky);
@@ -78,13 +94,13 @@ void dsky_two_init(dsky_two_t* two);
 
 void dsky_init(dsky_t* dsky);
 
-int dsky_update_digit(dsky_t* dsky, uint16_t value);
+int dsky_update_digit(dsky_t* dsky, uint16_t channel, uint16_t value);
 
 void dsky_row_print(dsky_row_t* row);
 
 void dsky_two_print(dsky_two_t* two);
 
-void dsky_print(dsky_t* dsky);
+void dsky_refresh(dsky_t* dsky);
 
 int  dsky_channel_input(uint16_t* channel, uint16_t* value);
 int  dsky_channel_output(uint16_t channel, uint16_t value);

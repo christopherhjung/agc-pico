@@ -89,10 +89,18 @@ static void write_register(uint8_t reg, uint8_t* data)
 
 void refresh_numeric_display(dsky_t *dsky)
 {
+  bool blink_on = !dsky->blink_off;
+  write_register_all(CMD_DISPLAYTEST, 0);
+  write_register_all(CMD_SCANLIMIT, 7);
+  write_register_all(CMD_DECODEMODE, 255);
+  write_register_all(CMD_BRIGHTNESS, 2);
+  write_register_all(CMD_SHUTDOWN, 1);
+
   uint8_t plus_encoding = 15;
-  uint8_t first_sign = dsky->rows[0].plus ? plus_encoding : (dsky->rows[0].minus ? 10 : 15);
-  uint8_t second_sign = dsky->rows[1].plus ? plus_encoding : (dsky->rows[1].minus ? 10 : 15);
-  uint8_t third_sign = dsky->rows[2].plus ? plus_encoding : (dsky->rows[2].minus ? 10 : 15);
+  uint8_t blank_encoding = 15;
+  uint8_t first_sign = dsky->rows[0].plus ? plus_encoding : (dsky->rows[0].minus ? 10 : blank_encoding);
+  uint8_t second_sign = dsky->rows[1].plus ? plus_encoding : (dsky->rows[1].minus ? 10 : blank_encoding);
+  uint8_t third_sign = dsky->rows[2].plus ? plus_encoding : (dsky->rows[2].minus ? 10 : blank_encoding);
 
   uint8_t data0[3] = {third_sign, first_sign, dsky->prog.first};
   write_register(CMD_DIGIT0 , data0);
@@ -100,10 +108,10 @@ void refresh_numeric_display(dsky_t *dsky)
   uint8_t data1[3] = {dsky->rows[2].first, dsky->rows[0].first, dsky->prog.second};
   write_register(CMD_DIGIT0 + 1, data1);
 
-  uint8_t data2[3] = {dsky->rows[2].second, second_sign, dsky->noun.first};
+  uint8_t data2[3] = {dsky->rows[2].second, second_sign, blink_on ? (uint8_t)dsky->noun.first : blank_encoding};
   write_register(CMD_DIGIT0 + 2, data2);
 
-  uint8_t data3[3] = {dsky->rows[2].third, dsky->rows[1].first, dsky->noun.second};
+  uint8_t data3[3] = {dsky->rows[2].third, dsky->rows[1].first, blink_on ? (uint8_t)dsky->noun.second : blank_encoding};
   write_register(CMD_DIGIT0 + 3, data3);
 
   uint8_t data4[3] = {dsky->rows[2].fourth, dsky->rows[1].second, dsky->rows[0].fourth};
@@ -112,10 +120,10 @@ void refresh_numeric_display(dsky_t *dsky)
   uint8_t data5[3] = {dsky->rows[2].fifth, dsky->rows[1].third, dsky->rows[0].fifth};
   write_register(CMD_DIGIT0 + 5, data5);
 
-  uint8_t data6[3] = {dsky->rows[1].fourth, dsky->verb.first, dsky->rows[0].second};
+  uint8_t data6[3] = {dsky->rows[1].fourth, blink_on ? (uint8_t)dsky->verb.first : blank_encoding, dsky->rows[0].second};
   write_register(CMD_DIGIT0 + 6, data6);
 
-  uint8_t data7[3] = {dsky->rows[1].fifth, dsky->verb.second, dsky->rows[0].third};
+  uint8_t data7[3] = {dsky->rows[1].fifth, blink_on ? (uint8_t)dsky->verb.second : blank_encoding, dsky->rows[0].third};
   write_register(CMD_DIGIT0 + 7, data7);
 }
 
@@ -144,7 +152,7 @@ void init_numeric_display()
 
 
   // This example will use SPI0 at 1MHz.
-  spi_init(spi_default, 1 * 100 * 1000);
+  spi_init(spi_default, 1 * 1000 * 1000);
   gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
   gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);
 
