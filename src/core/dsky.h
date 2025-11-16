@@ -18,6 +18,8 @@ typedef enum
   KEY_VERB    = 17,
   KEY_RSET    = 18,
   KEY_KEY_REL = 25,
+  KEY_PLUS    = 26,
+  KEY_MINUS   = 26,
   KEY_ENTER   = 28,
   KEY_CLR     = 30,
   KEY_NOUN    = 31
@@ -36,8 +38,8 @@ typedef struct
 
 typedef struct
 {
-  unsigned int first : 4;
-  unsigned int second : 4;
+  uint8_t first;
+  uint8_t second;
 } dsky_two_t;
 
 typedef struct

@@ -271,7 +271,7 @@ int agc_engine_init(agc_state_t* state, const uint8_t* core_image, uint64_t core
   // Load up the i/o channels.
   for(i = 0; i < NUM_CHANNELS; i++)
   {
-    if(1 != scanf("%o", &j))
+    //if(1 != scanf("%o", &j))
       goto Done;
     if(all_or_erasable)
       input(i) = j;

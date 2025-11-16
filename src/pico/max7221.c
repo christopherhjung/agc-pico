@@ -7,10 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "core/dsky.h"
 #include "hardware/spi.h"
 #include "pico/binary_info.h"
 #include "pico/stdlib.h"
-#include "core/dsky.h"
+#include "spi.h"
 
 /* Example code to talk to a Max7219 driving an 8 digit 7 segment display via SPI
 
@@ -45,45 +46,30 @@ const uint8_t CMD_SCANLIMIT   = 11;
 const uint8_t CMD_SHUTDOWN    = 12;
 const uint8_t CMD_DISPLAYTEST = 15;
 
-#ifdef PICO_DEFAULT_SPI_CSN_PIN
-static inline void cs_select()
-{
-  asm volatile("nop \n nop \n nop");
-  gpio_put(PICO_DEFAULT_SPI_CSN_PIN, 0);
-  asm volatile("nop \n nop \n nop");
-}
-
-static inline void cs_deselect()
-{
-  asm volatile("nop \n nop \n nop");
-  gpio_put(PICO_DEFAULT_SPI_CSN_PIN, 1);
-  asm volatile("nop \n nop \n nop");
-}
-#endif
 
 #if defined(spi_default) && defined(PICO_DEFAULT_SPI_CSN_PIN)
 static void write_register_all(uint8_t reg, uint8_t data)
 {
   uint8_t buf[2] = {reg, data};
-  cs_select();
+  cs_select(PICO_DEFAULT_SPI_CSN_PIN);
   for(int idx = 0; idx < NUM_MODULES; idx++)
   {
     spi_write_blocking(spi_default, buf, 2);
   }
-  cs_deselect();
+  cs_deselect(PICO_DEFAULT_SPI_CSN_PIN);
 }
 
 static void write_register(uint8_t reg, uint8_t* data)
 {
   uint8_t buf[2];
   buf[0] = reg;
-  cs_select();
+  cs_select(PICO_DEFAULT_SPI_CSN_PIN);
   for(int idx = 0; idx < NUM_MODULES; idx++)
   {
     buf[1] = data[idx];
     spi_write_blocking(spi_default, buf, 2);
   }
-  cs_deselect();
+  cs_deselect(PICO_DEFAULT_SPI_CSN_PIN);
 }
 #endif
 
@@ -135,35 +121,30 @@ void clear()
   }
 }
 
-void init_numeric_display()
+void init_spi_default()
 {
-
   gpio_init(PICO_DEFAULT_SPI_CSN_PIN);
   gpio_set_dir(PICO_DEFAULT_SPI_CSN_PIN, GPIO_OUT);
   gpio_put(PICO_DEFAULT_SPI_CSN_PIN, 1);
 
   sleep_ms(1);
 
-#if !defined(spi_default) || !defined(PICO_DEFAULT_SPI_SCK_PIN) \
-|| !defined(PICO_DEFAULT_SPI_TX_PIN) || !defined(PICO_DEFAULT_SPI_CSN_PIN)
-#warning spi/max7219_8x7seg_spi example requires a board with SPI pins
-  puts("Default SPI pins were not defined");
-#else
-
-
   // This example will use SPI0 at 1MHz.
   spi_init(spi_default, 1 * 1000 * 1000);
   gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
   gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);
+  gpio_set_function(PICO_DEFAULT_SPI_RX_PIN, GPIO_FUNC_SPI);
 
   // Make the SPI pins available to picotool
-  bi_decl(bi_2pins_with_func(
-    PICO_DEFAULT_SPI_TX_PIN, PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI));
-
+  bi_decl(bi_3pins_with_func(
+    PICO_DEFAULT_SPI_TX_PIN, PICO_DEFAULT_SPI_RX_PIN, PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI));
 
   // Make the CS pin available to picotool
   bi_decl(bi_1pin_with_name(PICO_DEFAULT_SPI_CSN_PIN, "SPI CS"));
+}
 
+void init_numeric_display()
+{
   // Send init sequence to device
 
   write_register_all(CMD_SHUTDOWN, 0);
@@ -174,6 +155,5 @@ void init_numeric_display()
   write_register_all(CMD_SHUTDOWN, 1);
 
   clear();
-#endif
 
 }

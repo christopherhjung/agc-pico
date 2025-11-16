@@ -328,7 +328,7 @@ int dsky_update_digit(dsky_t* dsky, uint16_t channel, uint16_t value)
     case 1:
       dsky->rows[2].fifth  = right;
       dsky->rows[2].fourth = left;
-      dsky->rows[2].minus |= sign;
+      dsky->rows[2].minus  = sign;
       break;
     case 2:
       dsky->rows[2].third  = right;
