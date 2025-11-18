@@ -79,10 +79,10 @@ void refresh_numeric_display(dsky_t *dsky)
   write_register_all(CMD_DISPLAYTEST, 0);
   write_register_all(CMD_SCANLIMIT, 7);
   write_register_all(CMD_DECODEMODE, 255);
-  write_register_all(CMD_BRIGHTNESS, 2);
+  write_register_all(CMD_BRIGHTNESS, 8);
   write_register_all(CMD_SHUTDOWN, 1);
 
-  uint8_t plus_encoding = 15;
+  uint8_t plus_encoding = 14;
   uint8_t blank_encoding = 15;
   uint8_t first_sign = dsky->rows[0].plus ? plus_encoding : (dsky->rows[0].minus ? 10 : blank_encoding);
   uint8_t second_sign = dsky->rows[1].plus ? plus_encoding : (dsky->rows[1].minus ? 10 : blank_encoding);
@@ -151,7 +151,7 @@ void init_numeric_display()
   write_register_all(CMD_DISPLAYTEST, 0);
   write_register_all(CMD_SCANLIMIT, 7);
   write_register_all(CMD_DECODEMODE, 255);
-  write_register_all(CMD_BRIGHTNESS, 2);
+  write_register_all(CMD_BRIGHTNESS, 4);
   write_register_all(CMD_SHUTDOWN, 1);
 
   clear();

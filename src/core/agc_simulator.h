@@ -95,7 +95,6 @@ typedef struct
   clock_t     next_core_dump;
   uint64_t    desired_cycles;
   uint64_t    cycle_dump;
-  struct tms  dummy_time;
   agc_state_t state;
 } sim_t;
 

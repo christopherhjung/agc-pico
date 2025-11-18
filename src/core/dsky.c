@@ -190,10 +190,9 @@ void dsky_input_handle(dsky_t* dsky)
     current_time += offset_time;
     real_current_time = current_time_millis();
 
-    if(next_flight_update <= current_time)
+    while(next_flight_update <= current_time)
     {
-      uint64_t flight_time = current_time - start_time;
-
+      uint64_t flight_time = next_flight_update - start_time;
       row_t data = profile_get_data(flight_time / 100);
       double accel[3] = {
         1.08 * data.third,
@@ -209,7 +208,7 @@ void dsky_input_handle(dsky_t* dsky)
 
       accelerate(accel);
       rotate(rot);
-      next_flight_update = current_time + 10;
+      next_flight_update += 10;
     }
   }
 
@@ -217,16 +216,10 @@ void dsky_input_handle(dsky_t* dsky)
   uint16_t value;
   while(dsky_channel_input(&channel, &value))
   {
-    if(channel == 8 || channel == 9 || channel == 11)//010
+    if(channel == 8 || channel == 9 || channel == 11 || channel == 0163)//010
     {
       if(dsky_update_digit(dsky, channel, value))
         dsky_refresh(dsky);
-    }
-    else if(channel == 0163)
-    {
-      dsky->blink_off = (value & 040) != 0;
-      dsky->indicator.restart = (value & 0200) != 0;
-      dsky_refresh(dsky);
     }
     else if(channel == 124 || channel == 125 || channel == 126)
     {
@@ -302,6 +295,13 @@ void dsky_init(dsky_t* dsky)
 
 int dsky_update_digit(dsky_t* dsky, uint16_t channel, uint16_t value)
 {
+  if(channel == 0163)
+  {
+    dsky->blink_off = (value & 040) != 0;
+    dsky->indicator.restart = (value & 0200) != 0;
+    return 1;
+  }
+
   if(channel == 9)
   {
     dsky->indicator.comp_acty = (value & 0x0002) != 0;

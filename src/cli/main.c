@@ -268,8 +268,8 @@ int main(int argc, char* argv[])
   fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
 
   dsky_t dsky = {0};
-
   dsky_init(&dsky);
+
 
   while(true)
   {
@@ -306,12 +306,6 @@ int main(int argc, char* argv[])
   agc_engine_init(&Simulator.state, core, len, 0);
   free(core);
 
-
-  /* Declare Options and parse the command line */
-
-  /* Initialize the Simulator and debugger if enabled
-	 * if the initialization fails or Options is NULL then the simulator will
-	 * return a non zero value and subsequently bail and exit the program */
   sim_exec();
 
   return (0);

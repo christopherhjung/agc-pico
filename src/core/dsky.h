@@ -19,7 +19,7 @@ typedef enum
   KEY_RSET    = 18,
   KEY_KEY_REL = 25,
   KEY_PLUS    = 26,
-  KEY_MINUS   = 26,
+  KEY_MINUS   = 27,
   KEY_ENTER   = 28,
   KEY_CLR     = 30,
   KEY_NOUN    = 31

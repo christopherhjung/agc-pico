@@ -143,7 +143,8 @@ int sim_init(opt_t* opt)
   /* If we are not in quiet mode display the version info */
 
   /* Initialize realtime and cycle counters */
-  Simulator.real_time_offset = times(&Simulator.dummy_time); // The starting time of the program.
+  struct tms  dummy_time;
+  Simulator.real_time_offset = times(&dummy_time); // The starting time of the program.
   Simulator.next_core_dump = Simulator.real_time_offset + Simulator.dump_interval;
   sim_set_cycle_count(SIM_CYCLECOUNT_AGC); // Num. of AGC cycles so far.
   Simulator.real_time_offset -=
@@ -200,7 +201,8 @@ average 11.7 microsecond per opcode execution
 */
 static void sim_manage_time(void)
 {
-  Simulator.real_time = times(&Simulator.dummy_time);
+  struct tms  dummy_time;
+  Simulator.real_time = times(&dummy_time);
 
   if(Simulator.real_time != Simulator.last_real_time)
   {
@@ -253,7 +255,7 @@ void sim_exec(void)
 
     /* Manage the Simulated Time */
     //sim_manage_time();
-
+//
     //while(Simulator.cycle_dump < Simulator.desired_cycles)
     //{
       /* Execute a cycle of the AGC engine */
@@ -263,7 +265,7 @@ void sim_exec(void)
       dsky_output_handle();
 
       /* Adjust the CycleCount */
-    //  sim_set_cycle_count(SIM_CYCLECOUNT_INC);
+      //sim_set_cycle_count(SIM_CYCLECOUNT_INC);
     //}
   }
 }
