@@ -147,8 +147,12 @@ void accelerate(double delta[3])
   }
 }
 
-bool is_init = false;
-bool started = false;
+
+#define INIT 0
+#define ALIGN 1
+#define STARTED 2
+
+uint16_t state = INIT;
 
 uint64_t init_time = 0;
 uint64_t start_time = 0;
@@ -161,25 +165,27 @@ uint16_t last_time = 0;
 
 void dsky_input_handle(dsky_t* dsky)
 {
-  if(dsky->prog.first == 0 && dsky->prog.second == 2)
+  uint16_t prog_nr = dsky->prog.first * 10 + dsky->prog.second;
+
+  if(prog_nr == 1)
   {
+    state = INIT;
+  }else if(prog_nr == 2){
     uint16_t mem_time = Simulator.state.erasable[0][RegTIME5];
 
-    if(is_init == 0){
-      is_init = true;
+    if(state == INIT){
+      state = ALIGN;
       init_time = mem_time;
-    }else if(mem_time - init_time >= 300 && !started){
+    }else if(state == ALIGN && mem_time - init_time >= 300){
       dsky_channel_output(24, 0);
-      started = true;
+      state = STARTED;
       start_time = mem_time;
       next_flight_update = mem_time;
       last_time = mem_time;
       current_time = mem_time;
       real_start_time = current_time_millis();
     }
-  }
-
-  if(dsky->prog.first == 1 && dsky->prog.second == 1)
+  }else if(prog_nr == 11)
   {
     uint16_t mem_time = Simulator.state.erasable[0][RegTIME5];
     uint16_t offset_time = mem_time >= last_time
@@ -192,17 +198,18 @@ void dsky_input_handle(dsky_t* dsky)
 
     while(next_flight_update <= current_time)
     {
+
       uint64_t flight_time = next_flight_update - start_time;
       row_t data = profile_get_data(flight_time / 100);
       double accel[3] = {
-        1.08 * data.third,
+        1.08 * data.accel,
         0.0,
         0.0
       };
 
       double rot[3] = {
-        data.second/10*DEG_TO_RAD,
-        data.fourth/10*DEG_TO_RAD,
+        -data.fourth/10*DEG_TO_RAD,
+        -data.second/10*DEG_TO_RAD,
         0.0
       };
 

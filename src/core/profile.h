@@ -6,7 +6,7 @@
 typedef struct
 {
   double second;
-  double third;
+  double accel;
   double fourth;
   int stage;
 } row_t;

@@ -14,7 +14,7 @@ row_t profile_get_data(int seconds)
   {
     row_t def = {
       .second = 0.0,
-      .third = 0.0,
+      .accel = 0.0,
       .fourth = 0.0,
       .stage = 0
     };
@@ -35,7 +35,7 @@ void profile_load_json(cJSON *json)
     row_t* data_row = &rows[idx];
     data_row->second = elems->valuedouble;
     elems = elems->next;
-    data_row->third = elems->valuedouble;
+    data_row->accel = elems->valuedouble;
     elems = elems->next;
     data_row->fourth = elems->valuedouble;
     elems = elems->next;

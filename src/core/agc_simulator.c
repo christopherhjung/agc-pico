@@ -270,39 +270,21 @@ uint64_t get_current_us(void)
   return tv.tv_sec * 1000000LL + tv.tv_usec;
 }*/
 
+#define AGC_PER_US_I16F47 0xa6aaaaaaaaaaa800
 
-/**
-Execute the simulated CPU.  Expecting to ACCURATELY cycle the simulation every
-11.7 microseconds within Linux (or Win32) is a bit too much, I think.
-(Not that it's really critical, as long as it looks right from the
-user's standpoint.)  So I do a trick:  I just execute the simulation
-often enough to keep up with real-time on the average.  AGC time is
-measured as the number of machine cycles divided by AGC_PER_SECOND,
-while real-time is measured using the times() function.  What this mains
-is that AGC_PER_SECOND AGC cycles are executed every CLK_TCK clock ticks.
-The timing is thus rather rough-and-ready (i.e., I'm sure it can be improved
-a lot).  It's good enough for me, for NOW, but I'd be happy to take suggestions
-for how to improve it in a reasonably portable way.*/
 void sim_exec(void)
 {
   dsky_t dsky;
   dsky_init(&dsky);
 
-  #define AGC_PER_US_S47 0xa6aaaaaaaaaaa800
-
-  //uint64_t len;
-  //const uint8_t* data = read_file("state/Core.bin", &len);
-  //agc_engine_init(&Simulator.state, data, len, 0);
-  //free((void*)data);
-
   while(1)
   {
+    //sync cycles with the speed of the agc
     absolute_time_t current_us = get_absolute_time();
-    uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_S47, 47);
+    uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_I16F47, 47);
     uint64_t current_ucycles = Simulator.state.cycle_counter * 1000000;
 
-    if(current_ucycles < desired_ucycles)
-    {
+    if(current_ucycles < desired_ucycles){
       sim_exec_engine();
     }else{
       dsky_input_handle(&dsky);
