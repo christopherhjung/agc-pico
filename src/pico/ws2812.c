@@ -115,9 +115,9 @@ void refresh_indicator_display(dsky_t* dsky)
 {
   bool blink_on = !dsky->blink_off;
   uint32_t black = urgb_u32(0, 0, 0);
-  uint32_t white = urgb_u32(40, 40, 40);
-  uint32_t green = urgb_u32(0, 40, 0);
-  uint32_t orange = urgb_u32(40, 20, 0);
+  uint32_t white = urgb_u32(60, 60, 60);
+  uint32_t green = urgb_u32(0, 80, 0);
+  uint32_t orange = urgb_u32(80, 40, 0);
 
   set_pixel_color(VERB_BACK_IDX, green);
   set_pixel_color(NOUN_BACK_IDX, green);

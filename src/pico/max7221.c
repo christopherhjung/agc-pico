@@ -73,16 +73,21 @@ static void write_register(uint8_t reg, uint8_t* data)
 }
 #endif
 
-void refresh_numeric_display(dsky_t *dsky)
+void hw_init_numeric_display()
 {
-  bool blink_on = !dsky->blink_off;
   write_register_all(CMD_DISPLAYTEST, 0);
   write_register_all(CMD_SCANLIMIT, 7);
   write_register_all(CMD_DECODEMODE, 255);
-  write_register_all(CMD_BRIGHTNESS, 8);
+  write_register_all(CMD_BRIGHTNESS, 15);
   write_register_all(CMD_SHUTDOWN, 1);
+}
 
-  uint8_t plus_encoding = 14;
+void refresh_numeric_display(dsky_t *dsky)
+{
+  hw_init_numeric_display();
+  bool blink_on = !dsky->blink_off;
+
+  uint8_t plus_encoding = 8;
   uint8_t blank_encoding = 15;
   uint8_t first_sign = dsky->rows[0].plus ? plus_encoding : (dsky->rows[0].minus ? 10 : blank_encoding);
   uint8_t second_sign = dsky->rows[1].plus ? plus_encoding : (dsky->rows[1].minus ? 10 : blank_encoding);
@@ -130,7 +135,7 @@ void init_spi_default()
   sleep_ms(1);
 
   // This example will use SPI0 at 1MHz.
-  spi_init(spi_default, 1 * 1000 * 1000);
+  spi_init(spi_default, 10 * 1000 * 1000);
   gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
   gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);
   gpio_set_function(PICO_DEFAULT_SPI_RX_PIN, GPIO_FUNC_SPI);
@@ -145,15 +150,6 @@ void init_spi_default()
 
 void init_numeric_display()
 {
-  // Send init sequence to device
-
-  write_register_all(CMD_SHUTDOWN, 0);
-  write_register_all(CMD_DISPLAYTEST, 0);
-  write_register_all(CMD_SCANLIMIT, 7);
-  write_register_all(CMD_DECODEMODE, 255);
-  write_register_all(CMD_BRIGHTNESS, 4);
-  write_register_all(CMD_SHUTDOWN, 1);
-
+  hw_init_numeric_display();
   clear();
-
 }

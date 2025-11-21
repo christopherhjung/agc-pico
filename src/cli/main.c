@@ -270,7 +270,7 @@ int main(int argc, char* argv[])
   dsky_t dsky = {0};
   dsky_init(&dsky);
 
-
+/*
   while(true)
   {
     int c = getchar();
@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
 
     dsky_refresh(&dsky);
     usleep(100000);
-  }
+  }*/
 
 
   const char *filename = "resources/profile.json";

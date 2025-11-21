@@ -40,6 +40,7 @@
 #include <assert.h>
 #include <core/agc_simulator.h>
 #include <core/dsky.h>
+#include <sys/time.h>
 
 #include "agc_engine.h"
 
@@ -228,6 +229,48 @@ static void sim_manage_time(void)
   }
 }
 
+/*
+uint64_t mul_fixed_point(uint64_t a, uint64_t b, uint8_t shift)
+{
+  uint64_t low, high;
+  asm("mul %0, %1, %2" : "=r"(low) : "r"(a), "r"(b));
+  asm("umulh %0, %1, %2" : "=r"(high) : "r"(a), "r"(b));
+  return (high << (64 - shift)) | (low >> shift);
+}*/
+
+static void mul64x64(uint64_t lhs, uint64_t rhs, uint64_t* low, uint64_t* high)
+{
+  uint64_t a_lo = (uint32_t)lhs;
+  uint64_t a_hi = lhs >> 32;
+  uint64_t b_lo = (uint32_t)rhs;
+  uint64_t b_hi = rhs >> 32;
+
+  uint64_t p0 = a_lo * b_lo;
+  uint64_t p1 = a_lo * b_hi;
+  uint64_t p2 = a_hi * b_lo;
+  uint64_t p3 = a_hi * b_hi;
+
+  uint64_t carry = ((p0 >> 32) + (uint32_t)p1 + (uint32_t)p2) >> 32;
+
+  *low = p0;
+  *high = p3 + (p1 >> 32) + (p2 >> 32) + carry;
+}
+
+uint64_t mul_fixed_point(uint64_t lhs, uint64_t rhs, uint8_t shift)
+{
+  uint64_t low, high;
+  mul64x64(lhs, rhs, &low, &high);
+  return (high << (64 - shift)) | (low >> shift);
+}
+/*
+uint64_t get_current_us(void)
+{
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1000000LL + tv.tv_usec;
+}*/
+
+
 /**
 Execute the simulated CPU.  Expecting to ACCURATELY cycle the simulation every
 11.7 microseconds within Linux (or Win32) is a bit too much, I think.
@@ -245,6 +288,8 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
+  #define AGC_PER_US_S47 0xa6aaaaaaaaaaa800
+
   //uint64_t len;
   //const uint8_t* data = read_file("state/Core.bin", &len);
   //agc_engine_init(&Simulator.state, data, len, 0);
@@ -252,20 +297,16 @@ void sim_exec(void)
 
   while(1)
   {
+    absolute_time_t current_us = get_absolute_time();
+    uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_S47, 47);
+    uint64_t current_ucycles = Simulator.state.cycle_counter * 1000000;
 
-    /* Manage the Simulated Time */
-    //sim_manage_time();
-//
-    //while(Simulator.cycle_dump < Simulator.desired_cycles)
-    //{
-      /* Execute a cycle of the AGC engine */
+    if(current_ucycles < desired_ucycles)
+    {
       sim_exec_engine();
-
+    }else{
       dsky_input_handle(&dsky);
       dsky_output_handle();
-
-      /* Adjust the CycleCount */
-      //sim_set_cycle_count(SIM_CYCLECOUNT_INC);
-    //}
+    }
   }
 }

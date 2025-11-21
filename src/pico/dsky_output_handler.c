@@ -176,5 +176,5 @@ void dsky_output_handle()
     dsky_press_pro(1);
 
   last_keyboard = current_keyboard;
-  next_time = current_time + 100000;
+  next_time = current_time + 10000;
 }
