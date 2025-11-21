@@ -43,6 +43,7 @@
 #include <sys/time.h>
 
 #include "agc_engine.h"
+#include "us_time.h"
 
 #ifndef PICO_BOARD
 #include <stdio.h>
@@ -51,68 +52,6 @@
 
 /** Declare the singleton Simulator object instance */
 sim_t Simulator;
-
-static int sim_initialize_engine(void)
-{
-  int result = 0;
-
-
-  //uint64_t len;
-  //const uint8_t* data = read_file(Simulator.opt->core, &len);
-  //agc_load_rom(&Simulator.state, data, len);
-  //free((void*)data);
-/*
-  if(Simulator.opt->resume == NULL)
-  {
-    if(Simulator.opt->cfg)
-    {
-      if(CmOrLm)
-      {
-        result = agc_engine_init(&Simulator.state, "CM.core", 0);
-      }
-      else
-      {
-        result = agc_engine_init(&Simulator.state, "LM.core", 0);
-      }
-    }
-    else if(Simulator.opt->no_resume)
-    {
-      result = agc_engine_init(&Simulator.state, NULL, 0);
-    }
-    else
-    {
-      result = agc_engine_init(&Simulator.state, "core", 0);
-    }
-  }
-  else
-  {
-    result = agc_engine_init(&Simulator.state, Simulator.opt->resume, 1);
-  }*/
-
-  /* Check AGC Engine Init Result and display proper message */
-  switch(result)
-  {
-    case 0:
-      break; /* All is OK */
-    case 1:
-      printf("Specified core-rope image file not found.\n");
-      break;
-    case 2:
-      printf("Core-rope image larger than core memory.\n");
-      break;
-    case 3:
-      printf("Core-rope image file must have even size.\n");
-      break;
-    case 5:
-      printf("Core-rope image file read error.\n");
-      break;
-    default:
-      printf("Initialization implementation error.\n");
-      break;
-  }
-
-  return (result);
-}
 
 /**
 This function executes one cycle of the AGC engine. This is
@@ -277,10 +216,12 @@ void sim_exec(void)
   dsky_t dsky;
   dsky_init(&dsky);
 
+  uint64_t start_us = time_us_64();
+
   while(1)
   {
     //sync cycles with the speed of the agc
-    absolute_time_t current_us = get_absolute_time();
+    uint64_t current_us = time_us_64() - start_us;
     uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_I16F47, 47);
     uint64_t current_ucycles = Simulator.state.cycle_counter * 1000000;
 
