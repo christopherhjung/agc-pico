@@ -80,14 +80,6 @@ int init_sim(sim_t* sim, opt_t* opt)
   ShowAlarms    = opt->show_alarms;
   /* If we are not in quiet mode display the version info */
 
-  /* Initialize realtime and cycle counters */
-  struct tms  dummy_time;
-  sim->real_time_offset = times(&dummy_time); // The starting time of the program.
-  sim->next_core_dump = sim->real_time_offset + sim->dump_interval;
-  sim->real_time_offset -=
-    (sim->cycle_dump + AGC_PER_SECOND / 2) / AGC_PER_SECOND;
-  sim->last_real_time = ~((clock_t)0);
-
   return (result | opt->version);
 }
 

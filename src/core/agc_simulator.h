@@ -87,14 +87,7 @@ typedef struct
 
 typedef struct
 {
-  //opt_t*      opt;
   clock_t     dump_interval;
-  clock_t     real_time_offset;
-  clock_t     real_time;
-  clock_t     last_real_time;
-  clock_t     next_core_dump;
-  uint64_t    desired_cycles;
-  uint64_t    cycle_dump;
   agc_state_t state;
 } sim_t;
 
