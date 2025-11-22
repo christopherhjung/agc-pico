@@ -163,7 +163,7 @@ uint64_t real_current_time = 0;
 
 uint16_t last_time = 0;
 
-void dsky_input_handle(dsky_t* dsky)
+void agc2dsky_handle(dsky_t* dsky)
 {
   uint16_t prog_nr = dsky->prog.first * 10 + dsky->prog.second;
 

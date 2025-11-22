@@ -5,7 +5,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-void dsky_output_handle()
+void dsky2agc_handle()
 {
   int c = getchar();
   switch(c)

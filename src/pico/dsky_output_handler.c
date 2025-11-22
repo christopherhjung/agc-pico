@@ -81,7 +81,7 @@ keyboard_t to_keys_down(keyboard_t last_keyboard, keyboard_t current_keyboard)
 static keyboard_t last_keyboard = {0};
 static uint64_t next_time = 0;
 
-void dsky_output_handle()
+void dsky2agc_handle()
 {
 
   int c = getchar_timeout_us(0);

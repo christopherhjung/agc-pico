@@ -66,7 +66,7 @@ static void sim_exec_engine()
 Initialize the AGC Simulator; this means setting up the debugger, AGC
 engine and initializing the simulator time parameters.
 */
-int sim_init(opt_t* opt)
+int init_sim(sim_t* sim, opt_t* opt)
 {
   int result = 0;
 
@@ -75,7 +75,7 @@ int sim_init(opt_t* opt)
     return (6);
 
   /* Set the basic simulator variables */
-  Simulator.dump_interval = opt->dump_time * sysconf(_SC_CLK_TCK);
+  sim->dump_interval = opt->dump_time * sysconf(_SC_CLK_TCK);
 
   /* Set legacy Option variables */
   InhibitAlarms = opt->inhibit_alarms;
@@ -84,12 +84,12 @@ int sim_init(opt_t* opt)
 
   /* Initialize realtime and cycle counters */
   struct tms  dummy_time;
-  Simulator.real_time_offset = times(&dummy_time); // The starting time of the program.
-  Simulator.next_core_dump = Simulator.real_time_offset + Simulator.dump_interval;
+  sim->real_time_offset = times(&dummy_time); // The starting time of the program.
+  sim->next_core_dump = sim->real_time_offset + sim->dump_interval;
   sim_set_cycle_count(SIM_CYCLECOUNT_AGC); // Num. of AGC cycles so far.
-  Simulator.real_time_offset -=
-    (Simulator.cycle_dump + AGC_PER_SECOND / 2) / AGC_PER_SECOND;
-  Simulator.last_real_time = ~((clock_t)0);
+  sim->real_time_offset -=
+    (sim->cycle_dump + AGC_PER_SECOND / 2) / AGC_PER_SECOND;
+  sim->last_real_time = ~((clock_t)0);
 
   return (result | opt->version);
 }
@@ -228,8 +228,8 @@ void sim_exec(void)
     if(current_ucycles < desired_ucycles){
       sim_exec_engine();
     }else{
-      dsky_input_handle(&dsky);
-      dsky_output_handle();
+      agc2dsky_handle(&dsky);
+      dsky2agc_handle();
     }
   }
 }

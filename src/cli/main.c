@@ -90,20 +90,16 @@ int main(int argc, char* argv[])
 {
   set_conio_terminal_mode();
 
-
-  struct termios oldt, newt;
-  int            ch;
-  int            oldf;
-
-  tcgetattr(STDIN_FILENO, &oldt);
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+  struct termios term;
+  tcgetattr(STDIN_FILENO, &term);
+  term.c_lflag &= ~(ICANON | ECHO);
+  tcsetattr(STDIN_FILENO, TCSANOW, &term);
+  int oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
   fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
 
   dsky_t dsky = {0};
   dsky_init(&dsky);
+
 /*
   while(true)
   {
@@ -126,14 +122,13 @@ int main(int argc, char* argv[])
   profile_load_file(file_contents, len);
   free((void*)file_contents);
 
-
   opt_t* opt = cli_parse_args(argc, argv);
+  init_sim(&Simulator, opt);
 
   char *rom = read_file("bin/Colossus249.bin", &len);
   agc_load_rom(&Simulator.state, rom, len);
   free(rom);
 
-  sim_init(opt);
 
   char *core = read_file("state/Core.bin", &len);
   agc_engine_init(&Simulator.state, core, len, 0);

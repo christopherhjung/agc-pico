@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
   profile_load_file(profile, 25383);
   opt_t opt = {0};
   agc_load_rom(&Simulator.state, rom, 73728);
-  sim_init(&opt);
+  init_sim(&Simulator, &opt);
   agc_engine_init(&Simulator.state, core, 73728, 0);
   sim_exec();
 

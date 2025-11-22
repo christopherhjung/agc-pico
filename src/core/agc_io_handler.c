@@ -53,7 +53,7 @@ int16_t last_rhc_roll  = 0;
 
 static int channel_is_set_up = 0;
 
-static void channel_setup(agc_state_t* state)
+static void init_dsky_channel(agc_state_t* state)
 {
   channel_is_set_up = 1;
 
@@ -71,7 +71,7 @@ static void channel_setup(agc_state_t* state)
 void agc_channel_output(agc_state_t* state, int channel, int value)
 {
   if(!channel_is_set_up)
-    channel_setup(state);
+    init_dsky_channel(state);
 
   // Some output channels have purposes within the CPU, so we have to
   // account for those separately.
@@ -100,7 +100,7 @@ void agc_channel_output(agc_state_t* state, int channel, int value)
 int agc_channel_input(agc_state_t* state)
 {
   if(!channel_is_set_up)
-    channel_setup(state);
+    init_dsky_channel(state);
 
   packet_t packet;
   while(ringbuffer_get(&ringbuffer_in, (unsigned char*)&packet))

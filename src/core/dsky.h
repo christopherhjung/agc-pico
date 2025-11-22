@@ -84,8 +84,8 @@ typedef struct
   unsigned int blink_off : 1;
 } dsky_t;
 
-void dsky_input_handle(dsky_t* dsky);
-void dsky_output_handle();
+void agc2dsky_handle(dsky_t* dsky);
+void dsky2agc_handle();
 
 void dsky_press_key(Key key);
 void dsky_press_pro(bool on);

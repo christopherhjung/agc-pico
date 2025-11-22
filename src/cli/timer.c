@@ -14,6 +14,14 @@ uint8_t mode = 0;
 uint8_t idx = 0;
 uint8_t timer_idx = 0;
 
+typedef struct
+{
+  uint64_t target;
+  bool running;
+} timer_t;
+
+timer_t timers[3];
+
 uint8_t parse(dsky_two_t two)
 {
   if(two.second == 15)
@@ -102,13 +110,13 @@ void handle_second_noun_state(dsky_t* dsky, char c)
 
 void handle_timer(dsky_t* dsky, char c)
 {
-  uint8_t timer = parse(dsky->noun);
-  if(!(1 <= timer && timer <= 3))
+  uint8_t timer_idx = parse(dsky->noun);
+  if(!(1 <= timer_idx && timer_idx <= 3))
     mode = IDLE_STATE;
 
-  --timer;
+  --timer_idx;
 
-  dsky_row_t* row = &dsky->rows[timer];
+  dsky_row_t* row = &dsky->rows[timer_idx];
 
   if(last_mode != SET_TIMER_STATE)
   {
@@ -122,6 +130,9 @@ void handle_timer(dsky_t* dsky, char c)
   if(c == '\n'){
     mode = IDLE_STATE;
     uint32_t seconds = parse_dsky_row(*row);
+    timer_t* timer = &timers[timer_idx];
+    timer->target = time_us_64() + seconds * 1000000;
+    timer->running = true;
   }else if('0' <= c && c <= '9'){
     row->first = row->second;
     row->second = row->third;
