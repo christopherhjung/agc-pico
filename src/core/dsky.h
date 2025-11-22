@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "agc_engine.h"
+
 typedef enum
 {
   KEY_ONE     = 1,
@@ -84,7 +86,7 @@ typedef struct
   unsigned int blink_off : 1;
 } dsky_t;
 
-void agc2dsky_handle(dsky_t* dsky);
+void agc2dsky_handle(agc_state_t* state, dsky_t* dsky);
 void dsky2agc_handle();
 
 void dsky_press_key(Key key);

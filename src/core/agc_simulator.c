@@ -50,16 +50,14 @@
 #include <unistd.h>
 #endif
 
-/** Declare the singleton Simulator object instance */
-sim_t Simulator;
 
 /**
 This function executes one cycle of the AGC engine. This is
 a wrapper function to eliminate showing the passing of the
 current engine state. */
-static void sim_exec_engine()
+static void sim_exec_engine(sim_t* sim)
 {
-  agc_engine(&Simulator.state);
+  agc_engine(&sim->state);
 }
 
 /**
@@ -86,7 +84,6 @@ int init_sim(sim_t* sim, opt_t* opt)
   struct tms  dummy_time;
   sim->real_time_offset = times(&dummy_time); // The starting time of the program.
   sim->next_core_dump = sim->real_time_offset + sim->dump_interval;
-  sim_set_cycle_count(SIM_CYCLECOUNT_AGC); // Num. of AGC cycles so far.
   sim->real_time_offset -=
     (sim->cycle_dump + AGC_PER_SECOND / 2) / AGC_PER_SECOND;
   sim->last_real_time = ~((clock_t)0);
@@ -94,23 +91,6 @@ int init_sim(sim_t* sim, opt_t* opt)
   return (result | opt->version);
 }
 
-/**
-This function adjusts the Simulator Cycle Count. Either based on the number
-of AGC Cycles or incremented during Sim cycles. This functions uses a
-mode switch to determine how to set or adjust the Cycle Counter
-*/
-void sim_set_cycle_count(int Mode)
-{
-  switch(Mode)
-  {
-    case SIM_CYCLECOUNT_AGC:
-      Simulator.cycle_dump = sysconf(_SC_CLK_TCK) * Simulator.state.cycle_counter;
-      break;
-    case SIM_CYCLECOUNT_INC:
-      Simulator.cycle_dump += sysconf(_SC_CLK_TCK);
-      break;
-  }
-}
 
 #ifdef PICO_BOARD
 #include "pico/stdlib.h"
@@ -133,49 +113,6 @@ static void sim_sleep(void)
   nanosleep(&req, &rem);
 #endif
 }
-
-
-/**
-This function manages the Simulator time to achieve the
-average 11.7 microsecond per opcode execution
-*/
-static void sim_manage_time(void)
-{
-  struct tms  dummy_time;
-  Simulator.real_time = times(&dummy_time);
-
-  if(Simulator.real_time != Simulator.last_real_time)
-  {
-    // Need to recalculate the number of AGC cycles we're supposed to
-    // have executed.  Notice the trick of multiplying both CycleCount
-    // and DesiredCycles by CLK_TCK, to avoid a long long division by CLK_TCK.
-    // This not only reduces overhead, but actually makes the calculation
-    // more exact.  A bit tricky to understand at first glance, though.
-    Simulator.last_real_time = Simulator.real_time;
-
-    //DesiredCycles = ((RealTime - RealTimeOffset) * AGC_PER_SECOND) / CLK_TCK;
-    //DesiredCycles = (RealTime - RealTimeOffset) * AGC_PER_SECOND;
-    // The calculation is done in the following funky way because if done as in
-    // the line above, the right-hand side will be done in 32-bit arithmetic
-    // on a 32-bit CPU, while the left-hand side is 64-bit, and so the calculation
-    // will overflow and fail after 4 minutes of operation.  Done the following
-    // way, the calculation will always be 64-bit.  Making AGC_PER_SECOND a ULL
-    // constant in agc_engine.h would fix it, but the Orbiter folk wouldn't
-    // be able to compile it.
-    Simulator.desired_cycles = Simulator.real_time;
-    Simulator.desired_cycles -= Simulator.real_time_offset;
-    Simulator.desired_cycles *= AGC_PER_SECOND;
-  }
-}
-
-/*
-uint64_t mul_fixed_point(uint64_t a, uint64_t b, uint8_t shift)
-{
-  uint64_t low, high;
-  asm("mul %0, %1, %2" : "=r"(low) : "r"(a), "r"(b));
-  asm("umulh %0, %1, %2" : "=r"(high) : "r"(a), "r"(b));
-  return (high << (64 - shift)) | (low >> shift);
-}*/
 
 static void mul64x64(uint64_t lhs, uint64_t rhs, uint64_t* low, uint64_t* high)
 {
@@ -201,17 +138,10 @@ uint64_t mul_fixed_point(uint64_t lhs, uint64_t rhs, uint8_t shift)
   mul64x64(lhs, rhs, &low, &high);
   return (high << (64 - shift)) | (low >> shift);
 }
-/*
-uint64_t get_current_us(void)
-{
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return tv.tv_sec * 1000000LL + tv.tv_usec;
-}*/
 
 #define AGC_PER_US_I16F47 0xa6aaaaaaaaaaa800
 
-void sim_exec(void)
+void sim_exec(sim_t* sim)
 {
   dsky_t dsky;
   dsky_init(&dsky);
@@ -223,12 +153,12 @@ void sim_exec(void)
     //sync cycles with the speed of the agc
     uint64_t current_us = time_us_64() - start_us;
     uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_I16F47, 47);
-    uint64_t current_ucycles = Simulator.state.cycle_counter * 1000000;
+    uint64_t current_ucycles = sim->state.cycle_counter * 1000000;
 
     if(current_ucycles < desired_ucycles){
-      sim_exec_engine();
+      sim_exec_engine(sim);
     }else{
-      agc2dsky_handle(&dsky);
+      agc2dsky_handle(&sim->state, &dsky);
       dsky2agc_handle();
     }
   }

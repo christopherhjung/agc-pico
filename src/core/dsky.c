@@ -34,7 +34,7 @@ double adjust(double x, double a, double b)
   return x - (b - a) * floor((x - a) / (b - a));
 }
 
-void modify_gimbal_angle(uint16_t axis, double delta)
+void modify_gimbal_angle(agc_state_t* state, uint16_t axis, double delta)
 {
   // ---- Calculate New Angle ----
   imu_angle[axis] = adjust(imu_angle[axis] + delta, 0, 2 * M_PI);
@@ -47,10 +47,10 @@ void modify_gimbal_angle(uint16_t axis, double delta)
   uint16_t n    = floor(fabs(dx) / ANGLE_INCR);
   pimu[axis] = adjust(pimu[axis] + sign * ANGLE_INCR * n, 0, 2 * M_PI);
 
-  uint16_t cdu = Simulator.state.erasable[0][26 + axis]; // read CDU counter (26 = 0x32 = CDUX)
+  uint16_t cdu = state->erasable[0][26 + axis]; // read CDU counter (26 = 0x32 = CDUX)
   cdu          = cdu & 0x4000 ? -(cdu ^ 0x7FFF) : cdu; // converts from ones-complement to twos-complement
   cdu += sign * n; // adds the number of pulses
-  Simulator.state.erasable[0][26 + axis] =
+  state->erasable[0][26 + axis] =
     cdu < 0 ? (-cdu) ^ 0x7FFF : cdu; // converts back to ones-complement and writes the counter
 }
 
@@ -58,7 +58,7 @@ int16_t from_int15(uint16_t val) {
   return val & 0x4000 ? -(val & 0x3FFF) : val & 0x3FFF;
 }
 
-void gyro_fine_align(uint16_t chan, uint16_t val)
+void gyro_fine_align(agc_state_t* state, uint16_t chan, uint16_t val)
 {
   uint16_t gyro_sign_minus  = val & 0x4000;
   uint16_t gyro_selection_a = val & 0x2000;
@@ -70,24 +70,24 @@ void gyro_fine_align(uint16_t chan, uint16_t val)
 
   if(!gyro_selection_a && gyro_selection_b)
   {
-    modify_gimbal_angle(0, gyro_pulses * FA_ANGLE);
+    modify_gimbal_angle(state, 0, gyro_pulses * FA_ANGLE);
   }
   if(gyro_selection_a && !gyro_selection_b)
   {
-    modify_gimbal_angle(1, gyro_pulses * FA_ANGLE);
+    modify_gimbal_angle(state, 1, gyro_pulses * FA_ANGLE);
   }
   if(gyro_selection_a && gyro_selection_b)
   {
-    modify_gimbal_angle(2, gyro_pulses * FA_ANGLE);
+    modify_gimbal_angle(state, 2, gyro_pulses * FA_ANGLE);
   }
 }
 
-void gyro_coarse_align(uint16_t chan, uint16_t val){
+void gyro_coarse_align(agc_state_t* state, uint16_t chan, uint16_t val){
   int16_t cdu_pulses = from_int15(val);
-  modify_gimbal_angle(chan - 124, cdu_pulses * CA_ANGLE);
+  modify_gimbal_angle(state, chan - 124, cdu_pulses * CA_ANGLE);
 }
 
-void rotate(double delta[3])
+void rotate(agc_state_t* state, double delta[3])
 {
   // based on Transform_BodyAxes_StableMember {dp dq dr}
 
@@ -105,9 +105,9 @@ void rotate(double delta[3])
   double dm_b = adjust((delta[2] * MQI - delta[1] * MRI) / nenner, -M_PI, M_PI);
 
   //--- Rad to Deg and call of Gimbal Angle Modification ----
-  modify_gimbal_angle(0, do_b);
-  modify_gimbal_angle(1, di_b);
-  modify_gimbal_angle(2, dm_b);
+  modify_gimbal_angle(state, 0, do_b);
+  modify_gimbal_angle(state, 1, di_b);
+  modify_gimbal_angle(state, 2, dm_b);
 }
 
 double velocity[3] = {0};
@@ -115,7 +115,7 @@ int64_t pipa[3]     = {0};
 //************************************************************************************************
 //*** Function: Modify PIPA Values to match simulated Speed                                   ****
 //************************************************************************************************
-void accelerate(double delta[3])
+void accelerate(agc_state_t* state, double delta[3])
 {
   // based on proc modify_pipaXYZ
   double sinOG = sin(imu_angle[0]);
@@ -140,10 +140,10 @@ void accelerate(double delta[3])
 
     pipa[axis] += counts;
 
-    int16_t p = Simulator.state.erasable[0][31 + axis]; // read PIPA counter (31 = 0x37 = PIPAX)
+    int16_t p = state->erasable[0][31 + axis]; // read PIPA counter (31 = 0x37 = PIPAX)
     p     = p & 0x4000 ? -(p ^ 0x7FFF) : p; // converts from ones-complement to twos-complement
     p += counts; // adds the number of pulses
-    Simulator.state.erasable[0][31 + axis] = p < 0 ? (-p) ^ 0x7FFF : p;
+    state->erasable[0][31 + axis] = p < 0 ? (-p) ^ 0x7FFF : p;
   }
 }
 
@@ -152,7 +152,7 @@ void accelerate(double delta[3])
 #define ALIGN 1
 #define STARTED 2
 
-uint16_t state = INIT;
+uint16_t modestate = INIT;
 
 uint64_t init_time = 0;
 uint64_t start_time = 0;
@@ -163,22 +163,22 @@ uint64_t real_current_time = 0;
 
 uint16_t last_time = 0;
 
-void agc2dsky_handle(dsky_t* dsky)
+void agc2dsky_handle(agc_state_t* state, dsky_t* dsky)
 {
   uint16_t prog_nr = dsky->prog.first * 10 + dsky->prog.second;
 
   if(prog_nr == 1)
   {
-    state = INIT;
+    modestate = INIT;
   }else if(prog_nr == 2){
-    uint16_t mem_time = Simulator.state.erasable[0][RegTIME5];
+    uint16_t mem_time = state->erasable[0][RegTIME5];
 
-    if(state == INIT){
-      state = ALIGN;
+    if(modestate == INIT){
+      modestate = ALIGN;
       init_time = mem_time;
-    }else if(state == ALIGN && mem_time - init_time >= 300){
+    }else if(modestate == ALIGN && mem_time - init_time >= 300){
       dsky_channel_output(24, 0);
-      state = STARTED;
+      modestate = STARTED;
       start_time = mem_time;
       next_flight_update = mem_time;
       last_time = mem_time;
@@ -187,7 +187,7 @@ void agc2dsky_handle(dsky_t* dsky)
     }
   }else if(prog_nr == 11)
   {
-    uint16_t mem_time = Simulator.state.erasable[0][RegTIME5];
+    uint16_t mem_time = state->erasable[0][RegTIME5];
     uint16_t offset_time = mem_time >= last_time
             ? mem_time - last_time
             : 0x3FFF + (mem_time - last_time);
@@ -213,8 +213,8 @@ void agc2dsky_handle(dsky_t* dsky)
         0.0
       };
 
-      accelerate(accel);
-      rotate(rot);
+      accelerate(state, accel);
+      rotate(state, rot);
       next_flight_update += 10;
     }
   }
@@ -230,11 +230,11 @@ void agc2dsky_handle(dsky_t* dsky)
     }
     else if(channel == 124 || channel == 125 || channel == 126)
     {
-      gyro_coarse_align(channel, value);
+      gyro_coarse_align(state, channel, value);
     }
     else if(channel == 127)
     {
-      gyro_fine_align(channel, value);
+      gyro_fine_align(state, channel, value);
     }
   }
 }

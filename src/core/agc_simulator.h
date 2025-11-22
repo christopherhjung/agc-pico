@@ -98,8 +98,6 @@ typedef struct
   agc_state_t state;
 } sim_t;
 
-extern sim_t Simulator;
 
-extern void sim_set_cycle_count(int Mode);
 extern int  init_sim(sim_t* sim, opt_t* opt);
-extern void sim_exec(void);
+extern void sim_exec(sim_t* sim);

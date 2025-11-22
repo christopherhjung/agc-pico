@@ -122,19 +122,20 @@ int main(int argc, char* argv[])
   profile_load_file(file_contents, len);
   free((void*)file_contents);
 
+  sim_t sim;
+
   opt_t* opt = cli_parse_args(argc, argv);
-  init_sim(&Simulator, opt);
+  init_sim(&sim, opt);
 
   char *rom = read_file("bin/Colossus249.bin", &len);
-  agc_load_rom(&Simulator.state, rom, len);
+  agc_load_rom(&sim.state, rom, len);
   free(rom);
 
-
   char *core = read_file("state/Core.bin", &len);
-  agc_engine_init(&Simulator.state, core, len, 0);
+  agc_engine_init(&sim.state, core, len, 0);
   free(core);
 
-  sim_exec();
+  sim_exec(&sim);
 
   return (0);
 }
