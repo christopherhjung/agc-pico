@@ -163,7 +163,7 @@ uint64_t real_current_time = 0;
 
 uint16_t last_time = 0;
 
-void agc2dsky_handle(agc_state_t* state, dsky_t* dsky)
+void sim2agc_handle(agc_state_t* state, dsky_t* dsky)
 {
   uint16_t prog_nr = dsky->prog.first * 10 + dsky->prog.second;
 
@@ -185,8 +185,7 @@ void agc2dsky_handle(agc_state_t* state, dsky_t* dsky)
       current_time = mem_time;
       real_start_time = current_time_millis();
     }
-  }else if(prog_nr == 11)
-  {
+  }else if(prog_nr == 11){
     uint16_t mem_time = state->erasable[0][RegTIME5];
     uint16_t offset_time = mem_time >= last_time
             ? mem_time - last_time
@@ -198,18 +197,17 @@ void agc2dsky_handle(agc_state_t* state, dsky_t* dsky)
 
     while(next_flight_update <= current_time)
     {
-
       uint64_t flight_time = next_flight_update - start_time;
       row_t data = profile_get_data(flight_time / 100);
       double accel[3] = {
-        1.08 * data.accel,
+        1.08 * data.accel_x,
         0.0,
         0.0
       };
 
       double rot[3] = {
-        -data.fourth/10*DEG_TO_RAD,
-        -data.second/10*DEG_TO_RAD,
+        -data.rot_x/10*DEG_TO_RAD,
+        -data.rot_y/10*DEG_TO_RAD,
         0.0
       };
 
@@ -219,6 +217,10 @@ void agc2dsky_handle(agc_state_t* state, dsky_t* dsky)
     }
   }
 
+}
+
+void agc2dsky_handle(agc_state_t* state, dsky_t* dsky)
+{
   uint16_t channel;
   uint16_t value;
   while(dsky_channel_input(&channel, &value))

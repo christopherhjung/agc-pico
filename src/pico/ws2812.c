@@ -136,7 +136,7 @@ void refresh_indicator_display(dsky_t* dsky)
   set_pixel_color(ALT_IDX, dsky->indicator.alt ? orange : black);
   set_pixel_color(VEL_IDX, dsky->indicator.vel ? orange : black);
 
-  for(size_t idx = 0; idx < 0; idx++)
+  for(size_t idx = 0; idx < 19; idx++)
     set_pixel_color(KY_BACKLIGHT + idx, white);
 
   refresh_ws2812(pio, sm, NUM_PIXELS);

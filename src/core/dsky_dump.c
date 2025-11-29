@@ -4,7 +4,17 @@
 
 char digit2char(unsigned int digit)
 {
-  if(digit >= 10)
+  if(digit == 10)
+    return '-';
+  if(digit == 11)
+    return 'H';
+  if(digit == 12)
+    return 'E';
+  if(digit == 13)
+    return 'L';
+  if(digit == 14)
+    return 'P';
+  if(digit == 15)
     return ' ';
   return '0' + digit;
 }

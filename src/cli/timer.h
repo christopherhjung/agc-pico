@@ -2,4 +2,4 @@
 
 #include "core/dsky.h"
 
-void handle(dsky_t* dsky, char c);
+void handle_timer(dsky_t* dsky);

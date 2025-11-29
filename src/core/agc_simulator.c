@@ -131,7 +131,7 @@ uint64_t mul_fixed_point(uint64_t lhs, uint64_t rhs, uint8_t shift)
   return (high << (64 - shift)) | (low >> shift);
 }
 
-#define AGC_PER_US_I16F47 0xa6aaaaaaaaaaa800
+#define AGC_PER_US_I17F47 0xa6aaaaaaaaaaa800
 
 void sim_exec(sim_t* sim)
 {
@@ -140,18 +140,23 @@ void sim_exec(sim_t* sim)
 
   uint64_t start_us = time_us_64();
 
+  bool mode = 0;
+
   while(1)
   {
     //sync cycles with the speed of the agc
     uint64_t current_us = time_us_64() - start_us;
-    uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_I16F47, 47);
+    uint64_t desired_ucycles = mul_fixed_point(current_us, AGC_PER_US_I17F47, 47);
     uint64_t current_ucycles = sim->state.cycle_counter * 1000000;
 
     if(current_ucycles < desired_ucycles){
       sim_exec_engine(sim);
     }else{
+      sim2agc_handle(&sim->state, &dsky);
       agc2dsky_handle(&sim->state, &dsky);
       dsky2agc_handle();
     }
+
+    //handle_timer(&dsky);
   }
 }

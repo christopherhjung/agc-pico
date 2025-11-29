@@ -1,13 +1,15 @@
 
+#include "dsky_output_handler.h"
+
 #include <core/dsky.h>
 #include <stdio.h>
-#include "core/profile.h"
+
 #include "core/dsky_dump.h"
+#include "core/profile.h"
+#include "core/us_time.h"
 #include "hardware/clocks.h"
 #include "hardware/vreg.h"
 #include "pico/stdlib.h"
-
-#include "dsky_output_handler.h"
 #include "spi.h"
 
 #define KY_CS_PIN 20
@@ -64,12 +66,13 @@ void init_keyboard()
   gpio_put(KY_SH_PIN, 0);
 }
 
+typedef union {
+  keyboard_t bits;
+  uint32_t   raw;
+} keyboard_union_t;
+
 keyboard_t to_keys_down(keyboard_t last_keyboard, keyboard_t current_keyboard)
 {
-  typedef union {
-    keyboard_t bits;
-    uint32_t   raw;
-  } keyboard_union_t;
 
   keyboard_union_t last_keyboard_union = {.bits = last_keyboard};
   keyboard_union_t current_keyboard_union = {.bits = current_keyboard};
@@ -78,12 +81,8 @@ keyboard_t to_keys_down(keyboard_t last_keyboard, keyboard_t current_keyboard)
   return current_keyboard_union.bits;
 }
 
-static keyboard_t last_keyboard = {0};
-static uint64_t next_time = 0;
-
-void dsky2agc_handle()
+void serial2agc_handle()
 {
-
   int c = getchar_timeout_us(0);
   switch(c)
   {
@@ -125,13 +124,24 @@ void dsky2agc_handle()
       if('1' <= c && c <= '9')
         dsky_press_key(c - '1' + KEY_ONE);
   }
+}
 
+void hw2agc_handle()
+{
+  static keyboard_t last_keyboard = {0};
+  static uint64_t next_time = 0;
 
   uint64_t current_time = time_us_64();
   if(next_time > current_time) return;
 
   keyboard_t current_keyboard = read_keyboard();
   keyboard_t keys_down = to_keys_down(last_keyboard, current_keyboard);
+
+  keyboard_union_t xx;
+  xx.raw = 0;
+  xx.bits = current_keyboard;
+
+  printf("Keys down: %08x\n", xx.raw);
 
   if(keys_down.entr)
     dsky_press_key(KEY_ENTER);
@@ -177,4 +187,11 @@ void dsky2agc_handle()
 
   last_keyboard = current_keyboard;
   next_time = current_time + 40000;
+}
+
+
+void dsky2agc_handle()
+{
+  serial2agc_handle();
+  hw2agc_handle();
 }

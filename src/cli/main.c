@@ -54,6 +54,7 @@
 #include "core/dsky_dump.h"
 #include "core/profile.h"
 #include "file.h"
+#include "pico/build/_deps/pico_sdk-src/src/rp2_common/pico_platform_common/include/pico/platform/common.h"
 #include "timer.h"
 
 // Set terminal to raw mode (no buffering, no enter needed)
@@ -99,19 +100,6 @@ int main(int argc, char* argv[])
 
   dsky_t dsky = {0};
   dsky_init(&dsky);
-
-/*
-  while(true)
-  {
-    int c = getchar();
-    if(c != -1)
-    {
-      handle(&dsky, c);
-    }
-
-    dsky_refresh(&dsky);
-    usleep(100000);
-  }*/
 
   const char *filename = "resources/profile.json";
   uint64_t len;

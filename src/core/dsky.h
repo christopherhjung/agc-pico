@@ -83,10 +83,12 @@ typedef struct
   dsky_two_t   verb;
   dsky_two_t   noun;
   dsky_row_t   rows[3];
-  unsigned int blink_off : 1;
+  bool blink_off;
 } dsky_t;
 
+void sim2agc_handle(agc_state_t* state, dsky_t* dsky);
 void agc2dsky_handle(agc_state_t* state, dsky_t* dsky);
+void serial2agc_handle();
 void dsky2agc_handle();
 
 void dsky_press_key(Key key);

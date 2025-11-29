@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
 
-
-
 set(PICO_BOARD pico2)
 set(PICO_COMPILER pico_arm_cortex_m33_gcc)
 include(pico_sdk_import.cmake)
@@ -34,16 +32,44 @@ add_executable(agc_pico
 
 pico_generate_pio_header(agc_pico ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/generated)
 
-
 # pull in common dependencies
-target_link_libraries(agc_pico pico_stdlib hardware_spi hardware_pio hardware_dma cjson)
+target_link_libraries(agc_pico
+  pico_stdlib
+  pico_multicore
+  hardware_spi
+  hardware_pio
+  hardware_dma
+  cjson
+)
 
 if (PICO_CYW43_SUPPORTED)
   target_link_libraries(agc_pico pico_cyw43_arch_none)
 endif()
 
-
 # create map/bin/hex file etc.
 pico_add_extra_outputs(agc_pico)
 pico_enable_stdio_usb(agc_pico 1)
 pico_enable_stdio_uart(agc_pico 0)
+
+
+#add_executable(sd_card
+#  sd_card.c
+#)
+#
+## pull in common dependencies
+#target_link_libraries(sd_card
+#  pico_stdlib
+#  hardware_spi
+#  hardware_pio
+#  hardware_dma
+#  no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+#)
+#
+#if (PICO_CYW43_SUPPORTED)
+#  target_link_libraries(sd_card pico_cyw43_arch_none)
+#endif()
+#
+#pico_add_extra_outputs(sd_card)
+#pico_enable_stdio_usb(sd_card 1)
+#pico_enable_stdio_uart(sd_card 0)
+#

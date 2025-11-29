@@ -1,5 +1,9 @@
 
 #include "timer.h"
+
+#include <unistd.h>
+#include <string.h>
+
 #include "core/us_time.h"
 
 #define IDLE_STATE 0
@@ -29,7 +33,7 @@ uint8_t parse(dsky_two_t two)
   return two.first * 10 + two.second;
 }
 
-uint32_t parse_dsky_row(dsky_row_t row)
+uint64_t dsky_row_decode_time(dsky_row_t row)
 {
   uint8_t first = row.first == 15 ? 0 : row.first;
   uint8_t second = row.second == 15 ? 0 : row.second;
@@ -38,6 +42,35 @@ uint32_t parse_dsky_row(dsky_row_t row)
   uint8_t fifth = row.fifth == 15 ? 0 : row.fifth;
 
   return first * 3600 + second * 600 + third * 60 + fourth * 10 + fifth;
+}
+
+void dsky_row_encode_time(int64_t us, dsky_row_t* row)
+{
+  row->plus = false;
+  row->minus = false;
+  if(us > 0){
+    row->plus = true;
+  }else if(us < 0){
+    row->minus = true;
+    us *= -1;
+  }
+
+  us = (us + 500000) / 1000000;
+
+  row->fifth = us % 10;
+  us /= 10;
+  row->fourth = us % 6;
+  us /= 6;
+  row->third = us % 10;
+  us /= 10;
+  row->second = us % 6;
+  us /= 6;
+  row->first = us % 10;
+
+  row->first = row->first == 0 ? 15 : row->first;
+  row->second = row->first == 15 && row->second == 0 ? 15 : row->second;
+  row->third = row->second == 15 && row->third == 0 ? 15 : row->third;
+  row->fourth = row->third == 15 && row->fourth == 0 ? 15 : row->fourth;
 }
 
 void handle_idle_state(dsky_t* dsky, char c)
@@ -56,6 +89,19 @@ void handle_idle_state(dsky_t* dsky, char c)
       dsky->noun.first = 15;
       dsky->noun.second = 15;
       break;
+    case 'P':
+    case 'p':
+    {
+      for(size_t idx = 0; idx < 3; ++idx)
+      {
+        if(timers[idx].target < time_us_64())
+        {
+          timers[idx].running = false;
+          dsky_row_init(&dsky->rows[idx]);
+        }
+      }
+      break;
+    }
     case '\n':
     {
       uint8_t verb_nr = parse(dsky->verb);
@@ -108,18 +154,22 @@ void handle_second_noun_state(dsky_t* dsky, char c)
   }
 }
 
-void handle_timer(dsky_t* dsky, char c)
+void handle_state_timer(dsky_t* dsky, char c)
 {
   uint8_t timer_idx = parse(dsky->noun);
   if(!(1 <= timer_idx && timer_idx <= 3))
     mode = IDLE_STATE;
 
   --timer_idx;
+  timer_t* timer = &timers[timer_idx];
 
   dsky_row_t* row = &dsky->rows[timer_idx];
 
   if(last_mode != SET_TIMER_STATE)
   {
+    timer->running = false;
+    row->minus = true;
+    row->plus = false;
     row->first = 15;
     row->second = 15;
     row->third = 15;
@@ -129,8 +179,7 @@ void handle_timer(dsky_t* dsky, char c)
 
   if(c == '\n'){
     mode = IDLE_STATE;
-    uint32_t seconds = parse_dsky_row(*row);
-    timer_t* timer = &timers[timer_idx];
+    uint32_t seconds = dsky_row_decode_time(*row);
     timer->target = time_us_64() + seconds * 1000000;
     timer->running = true;
   }else if('0' <= c && c <= '9'){
@@ -166,9 +215,37 @@ void handle(dsky_t* dsky, char c)
       handle_second_noun_state(dsky, c);
       break;
     case SET_TIMER_STATE:
-      handle_timer(dsky, c);
+      handle_state_timer(dsky, c);
       break;
   }
 
   last_mode = prev_mode;
+}
+
+void handle_timer(dsky_t* dsky)
+{
+
+  while(true)
+  {
+    for(size_t idx = 0; idx < 3; ++idx)
+    {
+      timer_t* timer = &timers[idx];
+      if(timer->running)
+      {
+        uint64_t now = time_us_64();
+        int64_t remaining = (int64_t)now - timer->target;
+        dsky_row_encode_time(remaining, &dsky->rows[idx]);
+      }
+    }
+
+    int c = getchar();
+    if(c != -1)
+    {
+      handle(dsky, c);
+    }
+
+    //if(memcmp(&old, dsky, sizeof(dsky_t)) == 0)
+    dsky_refresh(dsky);
+    usleep(100000);
+  }
 }

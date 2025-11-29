@@ -13,9 +13,9 @@ row_t profile_get_data(int seconds)
   if(seconds > 703)
   {
     row_t def = {
-      .second = 0.0,
-      .accel = 0.0,
-      .fourth = 0.0,
+      .rot_y = 0.0,
+      .accel_x = 0.0,
+      .rot_x = 0.0,
       .stage = 0
     };
     return def;
@@ -33,11 +33,11 @@ void profile_load_json(cJSON *json)
     int idx = elems->valueint;
     elems = elems->next;
     row_t* data_row = &rows[idx];
-    data_row->second = elems->valuedouble;
+    data_row->rot_y = elems->valuedouble;
     elems = elems->next;
-    data_row->accel = elems->valuedouble;
+    data_row->accel_x = elems->valuedouble;
     elems = elems->next;
-    data_row->fourth = elems->valuedouble;
+    data_row->rot_x = elems->valuedouble;
     elems = elems->next;
     data_row->stage = elems->valueint;
     elems = elems->next;
