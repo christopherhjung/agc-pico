@@ -1,14 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
 
-set(PICO_BOARD pico2)
-set(PICO_COMPILER pico_arm_cortex_m33_gcc)
-include(pico_sdk_import.cmake)
-include(pico_extras_import_optional.cmake)
-
-pico_sdk_init()
-
-project(VAGC)
-
 
 add_library(cjson STATIC ../../thirdparty/cJSON/cJSON.c)
 target_include_directories(cjson PUBLIC ../../thirdparty/)
@@ -52,24 +43,30 @@ pico_enable_stdio_usb(agc_pico 1)
 pico_enable_stdio_uart(agc_pico 0)
 
 
-#add_executable(sd_card
-#  sd_card.c
-#)
-#
-## pull in common dependencies
-#target_link_libraries(sd_card
-#  pico_stdlib
-#  hardware_spi
-#  hardware_pio
-#  hardware_dma
-#  no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-#)
-#
-#if (PICO_CYW43_SUPPORTED)
-#  target_link_libraries(sd_card pico_cyw43_arch_none)
-#endif()
-#
-#pico_add_extra_outputs(sd_card)
-#pico_enable_stdio_usb(sd_card 1)
-#pico_enable_stdio_uart(sd_card 0)
+add_executable(my_sd_card
+  my_sd_card.c
+  hw_config.c
+  audio_pio.c
+)
+target_include_directories(my_sd_card PRIVATE ../../thirdparty/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/include)
+
+pico_generate_pio_header(my_sd_card ${CMAKE_CURRENT_LIST_DIR}/audio_pio.pio)
+
+
+# pull in common dependencies
+target_link_libraries(my_sd_card
+  pico_stdlib
+  hardware_spi
+  hardware_pio
+  hardware_dma
+  no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+)
+
+if (PICO_CYW43_SUPPORTED)
+  target_link_libraries(my_sd_card pico_cyw43_arch_none)
+endif()
+
+pico_add_extra_outputs(my_sd_card)
+pico_enable_stdio_usb(my_sd_card 1)
+pico_enable_stdio_uart(my_sd_card 0)
 #

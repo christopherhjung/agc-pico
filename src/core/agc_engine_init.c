@@ -96,8 +96,6 @@
  * 		01/29/24 MAS	Added initialization of RadarGateCounter.
  */
 
-#pragma once
-
 #include <stdio.h>
 #include <string.h>
 

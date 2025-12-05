@@ -26,12 +26,19 @@
 #ifndef _PICO_AUDIO_PIO_H
 #define _PICO_AUDIO_PIO_H
 
-#include "audio_data.h"
 #include "audio_pio.h"
 #include "audio_pio.pio.h"
 #include "hardware/clocks.h"
+#include "hardware/dma.h"
 #include "hardware/pio.h"
 #include "pico/stdlib.h"
+
+#define PICO_AUDIO_FREQ 44100
+#define PICO_AUDIO_COUNT 2
+#define PICO_AUDIO_DATA_PIN 26
+#define PICO_AUDIO_CLOCK_PIN_BASE 27
+#define PICO_AUDIO_PIO 0
+#define PICO_AUDIO_SM 0
 
 #define AUDIO_PIO __CONCAT(pio, PICO_AUDIO_PIO)
 #define GPIO_FUNC_PIOx __CONCAT(GPIO_FUNC_PIO, PICO_AUDIO_PIO)
@@ -45,6 +52,8 @@ typedef struct audio_format
   uint8_t  audio_clock;
   PIO      pio;
   uint8_t  sm;
+  int      dma_chan;
+  dma_channel_config dma_cfg;
 } audio_format_t;
 
 static audio_format_t audio_format = {
@@ -56,20 +65,12 @@ static audio_format_t audio_format = {
   .sm            = PICO_AUDIO_SM,
 };
 
-void     pio_init();
-void     set_frequency(uint32_t frequency);
-void     update_pio_frequency(uint32_t sample_freq);
-int32_t* data_treating(const int16_t* audio, uint32_t len);
-void     audio_out(int32_t* samples);
+void     init_audio();
+void     deinit_audio();
+void     stream_audio(uint32_t* samples, uint32_t sample_count);
 
-void     Time_out(int32_t* samples, uint32_t time);
-void     Time_out_ms(int32_t* samples, uint32_t time_ms);
-int32_t* Volume_16(int16_t* samples, uint32_t len, uint8_t volume);
-int32_t* Volume_32(int16_t* samples, uint32_t len, uint8_t volume);
-int32_t* Volume_321(int32_t* samples, uint32_t len, uint8_t volume);
-void     free_32(int32_t* samples);
-void     free_16(int16_t* samples);
+void     audio_out(uint32_t sample);
 
-void Happy_birthday_out(int32_t* samples);
+
 
 #endif //_PICO_AUDIO_PIO_H
